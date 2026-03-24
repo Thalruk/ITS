@@ -21,7 +21,10 @@ Upewnij się, że masz zainstalowane:
 Otwórz folder z projektem w **Visual Studio Code**, otwórz terminal (`Ctrl + ` `).
 
 # Instalacja wszystkich potrzebnych bibliotek (node_modules)
+```
 npm install
-
+```
 # Uruchomienie serwera deweloperskiego
+```
 npm run dev
+```
