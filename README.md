@@ -18,7 +18,7 @@ Upewnij się, że masz zainstalowane:
 3. Wybierz ten projekt z listy Twoich repozytoriów na GitHubie.
 
 ### 3. Pierwsze uruchomienie
-Otwórz folder z projektem w **Visual Studio Code**, otwórz terminal (`Ctrl + ` `).
+Otwórz folder z projektem w **Visual Studio Code**, otwórz terminal (``Ctrl + ` ``).
 
 # Instalacja wszystkich potrzebnych bibliotek (node_modules)
 ```
