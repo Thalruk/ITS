@@ -2,7 +2,7 @@
   import { supabase } from '$lib/supabaseClient';
   import { invalidateAll } from '$app/navigation'; // Służy do odświeżania danych na stronie
 
-  // Odbieramy produkty
+  // Odbiera produkty
   let { data } = $props();
 
   // Zmienne, które przechowują to, co wpisujemy w formularzu
@@ -23,18 +23,18 @@
           description: newDescription, 
           price: parseFloat(newPrice),
           image_url: newImageUrl || 'https://via.placeholder.com/150', 
-          category: newCategory // <-- WYSYŁAMY KATEGORIĘ DO BAZY
+          category: newCategory 
         }
       ]);
 
     if (error) {
       alert('Błąd dodawania: ' + error.message);
     } else {
-      // Czyścimy pola formularza
+      // Czyści pola formularza
       newName = '';
       newDescription = '';
       newPrice = '';
-      // Odświeżamy dane na stronie
+      // Odświeża dane na stronie
       invalidateAll();
     }
   }
@@ -45,12 +45,12 @@
     const { error } = await supabase
       .from('products')
       .delete()
-      .eq('id', productId); // Usuwamy produkt, którego id zgadza się z tym klikniętym
+      .eq('id', productId); // Usuwa produkt, którego id zgadza się z tym klikniętym
 
     if (error) {
       alert('Błąd usuwania: ' + error.message);
     } else {
-      // Odświeżamy dane na stronie po usunięciu
+      // Odświeża dane na stronie po usunięciu
       invalidateAll();
     }
   }
@@ -127,20 +127,17 @@
 
   .add-btn:hover { background-color: #38a169; }
 
-  /* Reszta stylów z poprzedniej wersji */
   .products-grid {
     display: grid;
-    /* Automatycznie dopasowuje kolumny (minimum 250px, maksimum ile wlezie) */
+    /* Automatycznie dopasowuje kolumny */
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 20px;
     margin-top: 20px;
   }
 
   .product-card img {
-    width: 100%;
-    height: 180px;
-    object-fit: contain;     /* Zmiana: obrazek w całości zmieści się w ramce */
-    background-color: #1a202c; /* Opcjonalnie: ciemne tło (dopasowane do Twojego motywu), żeby wypełnić luki */
+    width: 90%;
+    height: 300px;
     border-radius: 4px;
     margin-bottom: 10px;
   }
@@ -152,7 +149,7 @@
     font-weight: bold;
     color: #2c7a7b;
     margin-bottom: 10px;
-    margin-top: auto; /* <-- TO JEST TA MAGIA */
+    margin-top: auto;
   }
 
   .buy-btn {
@@ -189,11 +186,11 @@
     text-transform: uppercase;
   }
   
-  /* Lekki styl dla rozwijanej listy, żeby pasowała do reszty */
+
   .admin-panel select {
     padding: 8px;
     border: 1px solid #ccc;
     border-radius: 4px;
-    background-color: rgb(172, 16, 16);
+    background-color: rgb(233, 228, 228);
   }
 </style>
