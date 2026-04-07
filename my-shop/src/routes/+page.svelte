@@ -10,6 +10,7 @@
   let newDescription = $state('');
   let newPrice = $state('');
  let newImageUrl = $state(''); 
+ let newCategory = $state('');
   // 1. FUNKCJA DODAWANIA PRODUKTU
   async function addProduct() {
     if (!newName || !newPrice) return alert('Wpisz chociaż nazwę i cenę!');
@@ -21,7 +22,8 @@
           name: newName, 
           description: newDescription, 
           price: parseFloat(newPrice),
-          image_url: newImageUrl || 'https://via.placeholder.com/150' 
+          image_url: newImageUrl || 'https://via.placeholder.com/150', 
+          category: newCategory // <-- WYSYŁAMY KATEGORIĘ DO BAZY
         }
       ]);
 
@@ -62,6 +64,15 @@
   <input type="text" bind:value={newDescription} placeholder="Krótki opis" />
   <input type="number" bind:value={newPrice} placeholder="Cena (np. 99.99)" />
   <input type="text" bind:value={newImageUrl} placeholder="Link do zdjęcia (URL)" />
+  <select bind:value={newCategory}>
+    <option value="">Wybierz gatunek...</option>
+    <option value="RPG">RPG</option>
+    <option value="FPS">FPS / Strzelanka</option>
+    <option value="Strategia">Strategia</option>
+    <option value="Symulator">Symulator</option>
+    <option value="Horror">Horror</option>
+    <option value="Sportowa">Sportowa</option>
+  </select>
   <button class="add-btn" onclick={addProduct}>Dodaj do bazy</button>
 </div>
 
@@ -71,6 +82,9 @@
       <img src={product.image_url} alt={product.name} />
       <h2>{product.name}</h2>
       <p>{product.description}</p>
+      {#if product.category}
+    <span class="category-tag">{product.category}</span>
+  {/if}
       <div class="price">{product.price} zł</div>
       
       <button class="buy-btn">Dodaj do koszyka</button>
@@ -163,4 +177,23 @@
     cursor: pointer;
   }
   .delete-btn:hover { background-color: #c53030; }
+  .category-tag {
+    background-color: #4a5568;
+    color: white;
+    font-size: 0.8rem;
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 6px;
+    align-self: flex-start;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+  
+  /* Lekki styl dla rozwijanej listy, żeby pasowała do reszty */
+  .admin-panel select {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: white;
+  }
 </style>
