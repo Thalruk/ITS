@@ -194,6 +194,6 @@
     padding: 8px;
     border: 1px solid #ccc;
     border-radius: 4px;
-    background-color: white;
+    background-color: rgb(172, 16, 16);
   }
 </style>
