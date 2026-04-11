@@ -28,3 +28,8 @@ npm install
 ```
 npm run dev
 ```
+
+# Instalacja bazy danych supabase
+```
+npm install @supabase/supabase-js
+```
