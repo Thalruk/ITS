@@ -245,6 +245,9 @@
           <option value="RPG">RPG</option>
           <option value="FPS">FPS</option>
           <option value="Strategia">Strategia</option>
+          <option value="Sportowa">Sportowa</option>
+          <option value="Horror">Horror</option>
+          <option value="Symulator">Symulator</option>
         </select>
         
         <label for="edit-stock">Ilość sztuk na magazynie:</label>
@@ -271,6 +274,9 @@
           <option value="RPG">RPG</option>
           <option value="FPS">FPS</option>
           <option value="Strategia">Strategia</option>
+          <option value="Sportowa">Sportowa</option>
+          <option value="Horror">Horror</option>
+          <option value="Symulator">Symulator</option>
         </select>
         <input type="number" bind:value={newStock} placeholder="Ilość sztuk" />
         <button class="order-btn" onclick={addProduct}>Dodaj grę</button>
