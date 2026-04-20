@@ -102,10 +102,43 @@
     else loadCart();
   }
 
+  // --- CZYSZCZENIE CAŁEGO KOSZYKA ---
+  async function clearCart() {
+    if (!confirm('Czy na pewno chcesz usunąć wszystkie produkty z koszyka?')) return;
+    const { error } = await supabase.from('cart_items').delete().eq('user_id', currentUser.id);
+    if (error) alert('Błąd: ' + error.message);
+    else loadCart();
+  }
+
+  // --- ZMIANA ILOŚCI W KOSZYKU ---
+  /** * @param {any} item 
+   * @param {number} delta 
+   */
+  async function updateCartQuantity(item, delta) {
+    const newQty = item.quantity + delta;
+
+    // Nie pozwalamy zejść poniżej 1 (od tego jest przycisk Usuń)
+    if (newQty < 1) return; 
+    
+    // Blokada przed dodaniem więcej niż jest na magazynie
+    if (newQty > item.products.stock_quantity) {
+      return alert(`Maksymalna dostępna ilość to ${item.products.stock_quantity} szt.`);
+    }
+
+    const { error } = await supabase
+      .from('cart_items')
+      .update({ quantity: newQty })
+      .eq('id', item.id);
+
+    if (error) alert('Błąd: ' + error.message);
+    else loadCart(); // Odświeża koszyk i na nowo przelicza ceny
+  }
+
   async function placeOrder() {
     if (!selectedDeliveryId) return alert('Wybierz metodę dostawy!');
     if (!selectedPaymentId) return alert('Wybierz metodę płatności!');
     
+    // 1. Tworzymy nowe zamówienie w bazie
     const { data: order, error: oErr } = await supabase.from('orders').insert({
       user_id: currentUser.id, 
       total_amount: finalTotal, 
@@ -113,18 +146,34 @@
       payment_method_id: selectedPaymentId,
       status: 'paid'
     }).select().single();
-
     if (oErr) return alert("Błąd zamówienia: " + oErr.message);
 
+    // 2. Dodajemy pozycje do zamówienia
     const orderItems = cart.map(item => ({
       order_id: order.id, product_id: item.product_id, quantity: item.quantity, price_at_time: item.products.price
     }));
-
     await supabase.from('order_items').insert(orderItems);
+
+    // 3. Zdejmujemy sztuki z magazynu 
+    for (const item of cart) {
+      const newStockQuantity = item.products.stock_quantity - item.quantity;
+      
+      await supabase
+        .from('products')
+        .update({ stock_quantity: newStockQuantity })
+        .eq('id', item.product_id);
+    }
+
+    // 4. Czyścimy koszyk klienta
     await supabase.from('cart_items').delete().eq('user_id', currentUser.id);
     
+    // 5. Finalizacja i odświeżenie widoku
     alert('Dziękujemy! Zamówienie zostało złożone.');
-    selectedDeliveryId = ''; loadCart(); invalidateAll();
+    selectedDeliveryId = ''; 
+    selectedPaymentId = '';
+    
+    loadCart(); 
+    invalidateAll(); // Automatycznie odświeży katalog gier z nowymi ilościami!
   }
 
   // --- LOGIKA ADMINA ---
@@ -162,6 +211,7 @@
           name: editingProduct.name,
           description: editingProduct.description,
           price: parseFloat(editingProduct.price),
+          image_url: editingProduct.image_url,
           category: editingProduct.category,
           stock_quantity: parseInt(editingProduct.stock_quantity) || 0
         })
@@ -239,6 +289,9 @@
         <label for="edit-price">Cena (zł):</label>
         <input id="edit-price" type="number" bind:value={editingProduct.price} />
         
+        <label for="edit-img">Link do obrazka:</label>
+        <input id="edit-img" type="text" bind:value={editingProduct.image_url} />
+
         <label for="edit-cat">Rodzaj gry:</label>
         <select id="edit-cat" bind:value={editingProduct.category}>
           <option value="">Brak...</option>
@@ -311,13 +364,25 @@
 
   {#if currentUser && !isAdmin}
     <section class="checkout-section">
-      <h2>🛒 Twój Koszyk</h2>
+      <div class="cart-header">
+        <h2>🛒 Twój Koszyk</h2>
+        {#if cart.length > 0}
+          <button class="clear-cart-btn" onclick={clearCart}>Wyczyść koszyk 🗑️</button>
+        {/if}
+      </div>
+
       <div class="cart-list">
         {#each cart as item (item.id)}
           <div class="cart-item">
             <div class="cart-item-info">
               <span class="cart-item-name">{item.products.name}</span>
-              <span class="cart-item-qty">x {item.quantity}</span>
+              
+              <div class="qty-controls">
+                <button class="qty-btn" onclick={() => updateCartQuantity(item, -1)} disabled={item.quantity <= 1}>-</button>
+                <span class="cart-item-qty">{item.quantity}</span>
+                <button class="qty-btn" onclick={() => updateCartQuantity(item, 1)} disabled={item.quantity >= item.products.stock_quantity}>+</button>
+              </div>
+
               <span class="cart-item-price">{(item.products.price * item.quantity).toFixed(2)} zł</span>
             </div>
             <button class="remove-btn" onclick={() => removeFromCart(item.id)}>Usuń 🗑️</button>
@@ -780,6 +845,47 @@
     font-weight: bold;
     margin-bottom: 5px;
     color: #a0aec0;
+  }
+
+  /* Nagłówek koszyka z przyciskiem czyszczenia */
+  .cart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #2d3748;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+  }
+  
+  .cart-header h2 { margin: 0; border: none; padding: 0; }
+  
+  .clear-cart-btn {
+    background: #4a5568; color: white; border: none;
+    padding: 6px 12px; border-radius: 4px; cursor: pointer;
+    font-size: 0.85rem; transition: background 0.2s;
+  }
+  .clear-cart-btn:hover { background: #e53e3e; }
+
+  /* Kontrolki plus i minus */
+  .qty-controls {
+    display: flex; align-items: center; gap: 5px;
+    background: #2d3748; padding: 2px 5px; border-radius: 6px;
+  }
+  
+  .qty-btn {
+    background: #4a5568; color: white; border: none;
+    width: 24px; height: 24px; border-radius: 4px;
+    cursor: pointer; font-weight: bold;
+    display: flex; justify-content: center; align-items: center;
+    transition: background 0.2s;
+  }
+  
+  .qty-btn:hover:not(:disabled) { background: #3182ce; }
+  .qty-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  
+  /* Nadpisanie Twojej poprzedniej szarej pigułki na licznik */
+  .cart-item-qty {
+    background: transparent; color: white; padding: 0 5px; font-weight: bold;
   }
 
 </style>
