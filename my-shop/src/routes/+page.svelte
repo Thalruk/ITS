@@ -310,7 +310,7 @@
         <label for="edit-name">Nazwa:</label>
         <input id="edit-name" type="text" bind:value={editingProduct.name} />
         
-        <label for="edit-desc">Opis:</label>
+        <label for="edit-desc">Producent:</label>
         <input id="edit-desc" type="text" bind:value={editingProduct.description} />
         
         <label for="edit-price">Cena (zł):</label>
