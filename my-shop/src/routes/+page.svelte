@@ -187,11 +187,22 @@
     for (const item of cart) {
       const liveProd = liveProducts.find(p => p.id === item.product_id);
       
-      if (!liveProd || liveProd.stock_quantity < item.quantity) {
-        alert(`Niestety, ktoś ubiegł Cię z zakupem gry "${item.products.name}"! Zaktualizowaliśmy Twój koszyk.`);
-        loadCart(); 
+      // Sytuacja 1: Ktoś usunął grę z bazy lub wykupił ją całkowicie (0 sztuk)
+      if (!liveProd || liveProd.stock_quantity === 0) {
+        await supabase.from('cart_items').delete().eq('id', item.id);
+        alert(`Niestety, gra "${item.products.name}" została wyprzedana! Usunęliśmy ją z Twojego koszyka.`);
+        loadCart();
         invalidateAll();
-        return; 
+        return;
+      }
+
+      // Sytuacja 2: Ktoś wykupił część sztuk, mamy mniej niż chce klient
+      if (liveProd.stock_quantity < item.quantity) {
+        await supabase.from('cart_items').update({ quantity: liveProd.stock_quantity }).eq('id', item.id);
+        alert(`Niestety, ktoś ubiegł Cię z zakupem i zostało tylko ${liveProd.stock_quantity} szt. gry "${item.products.name}"! Zaktualizowaliśmy Twój koszyk.`);
+        loadCart();
+        invalidateAll();
+        return;
       }
     }
     // --- KONIEC BRAMKI BEZPIECZEŃSTWA ---
