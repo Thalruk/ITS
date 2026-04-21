@@ -43,7 +43,8 @@
         { event: '*', schema: 'public', table: 'products' }, 
         (payload) => {
           console.log('Ktoś zmienił bazę! Odświeżam...', payload);
-          invalidateAll(); 
+          invalidateAll(); // Odświeża katalog gier
+          if (currentUser && !isAdmin) loadCart(); // Odświeża koszyk klienta, jeśli stan się zmienił
         }
       )
       .subscribe();
@@ -66,8 +67,13 @@
   }
 
   // --- LOGIKA KOSZYKA (Tylko Klient) ---
-  async function loadCart() {
-    const { data: c } = await supabase.from('cart_items').select('id, quantity, product_id, products(*)').eq('user_id', currentUser.id);
+ async function loadCart() {
+    const { data: c } = await supabase
+      .from('cart_items')
+      .select('id, quantity, product_id, products(*)')
+      .eq('user_id', currentUser.id)
+      .order('id', { ascending: true }); // <-- TA LINIJKA ZATRZYMA SKAKANIE
+      
     cart = c || [];
   }
 
@@ -101,13 +107,25 @@
       
     } else {
       // Gry nie ma w koszyku -> Dodajemy jako nową pozycję
+      // Gry nie ma w koszyku na tym urządzeniu -> Dodajemy jako nową pozycję
       const { error } = await supabase.from('cart_items').insert({ 
         user_id: currentUser.id, 
         product_id: product.id, 
         quantity: requestedQty 
       });
-      if (error) alert('Błąd: ' + error.message);
-      else { alert('Dodano do koszyka!'); loadCart(); }
+
+      if (error) {
+        // Kod 23505 oznacza "Naruszenie unikalnego klucza" (ktoś na tym koncie już to dodał w tle)
+        if (error.code === '23505') {
+          alert('Ten produkt jest już w Twoim koszyku (został dodany w innej karcie urządzenia). Odświeżam koszyk!');
+          loadCart();
+        } else {
+          alert('Błąd: ' + error.message);
+        }
+      } else { 
+        alert('Dodano do koszyka!'); 
+        loadCart(); 
+      }
     }
   }
 
@@ -150,11 +168,35 @@
     else loadCart(); // Odświeża koszyk i na nowo przelicza ceny
   }
 
-  async function placeOrder() {
+ async function placeOrder() {
     if (!selectedDeliveryId) return alert('Wybierz metodę dostawy!');
     if (!selectedPaymentId) return alert('Wybierz metodę płatności!');
     
-    // 1. Tworzymy nowe zamówienie w bazie
+    // --- BRAMKA BEZPIECZEŃSTWA ---
+    const productIds = cart.map(item => item.product_id);
+    const { data: liveProducts, error: fetchError } = await supabase
+      .from('products')
+      .select('id, name, stock_quantity')
+      .in('id', productIds);
+
+    // BEZPIECZNIK 1: Upewniamy się, że baza odpowiedziała poprawnie (naprawia błąd 'null')
+    if (fetchError || !liveProducts) {
+      return alert('Błąd połączenia z serwerem. Nie można zweryfikować stanu magazynu.');
+    }
+
+    for (const item of cart) {
+      const liveProd = liveProducts.find(p => p.id === item.product_id);
+      
+      if (!liveProd || liveProd.stock_quantity < item.quantity) {
+        alert(`Niestety, ktoś ubiegł Cię z zakupem gry "${item.products.name}"! Zaktualizowaliśmy Twój koszyk.`);
+        loadCart(); 
+        invalidateAll();
+        return; 
+      }
+    }
+    // --- KONIEC BRAMKI BEZPIECZEŃSTWA ---
+
+    // 1. Tworzymy nowe zamówienie
     const { data: order, error: oErr } = await supabase.from('orders').insert({
       user_id: currentUser.id, 
       total_amount: finalTotal, 
@@ -164,7 +206,7 @@
     }).select().single();
     if (oErr) return alert("Błąd zamówienia: " + oErr.message);
 
-    // 2. Dodajemy pozycje do zamówienia
+    // 2. Kopiujemy do historii
     const orderItems = cart.map(item => ({
       order_id: order.id, product_id: item.product_id, quantity: item.quantity, price_at_time: item.products.price
     }));
@@ -172,24 +214,28 @@
 
     // 3. Zdejmujemy sztuki z magazynu 
     for (const item of cart) {
-      const newStockQuantity = item.products.stock_quantity - item.quantity;
+      const liveProd = liveProducts.find(p => p.id === item.product_id);
       
-      await supabase
-        .from('products')
-        .update({ stock_quantity: newStockQuantity })
-        .eq('id', item.product_id);
+      // BEZPIECZNIK 2: Mówimy edytorowi "spokojnie, jeśli tu dotarł, to liveProd na 100% istnieje"
+      if (liveProd) {
+        const newStockQuantity = liveProd.stock_quantity - item.quantity;
+        await supabase
+          .from('products')
+          .update({ stock_quantity: newStockQuantity })
+          .eq('id', item.product_id);
+      }
     }
 
-    // 4. Czyścimy koszyk klienta
+    // 4. Czyścimy koszyk
     await supabase.from('cart_items').delete().eq('user_id', currentUser.id);
     
-    // 5. Finalizacja i odświeżenie widoku
+    // 5. Finalizacja
     alert('Dziękujemy! Zamówienie zostało złożone.');
     selectedDeliveryId = ''; 
     selectedPaymentId = '';
     
     loadCart(); 
-    invalidateAll(); // Automatycznie odświeży katalog gier z nowymi ilościami!
+    invalidateAll(); 
   }
 
   // --- LOGIKA ADMINA ---
@@ -289,11 +335,18 @@
 </script>
 
 <div class="dev-bar">
-  <span>Widok: <strong>{!currentUser ? 'Niezalogowany Gość' : (isAdmin ? 'Administrator' : 'Zalogowany Klient')}</strong></span>
+  <span>
+    Widok: <strong>{!currentUser ? 'Niezalogowany Gość' : (isAdmin ? 'Admin' : 'Klient')}</strong>
+    {#if currentUser}
+      <small style="margin-left: 10px; opacity: 0.8;">({currentUser.email})</small>
+    {/if}
+  </span>
+  
   <div class="dev-buttons">
-    <button onclick={() => logout()} class="logout-btn">Wyloguj (Gość)</button>
-    <button onclick={() => loginAs('tester@sklep.pl')}>Zaloguj jako Klient</button>
-    <button onclick={() => loginAs('admin@sklep.pl')} class="admin-btn">Zaloguj jako Admin</button>
+    <button onclick={() => logout()} class="logout-btn">Wyloguj</button>
+    <button onclick={() => loginAs('tester@sklep.pl')}>Tester 1</button>
+    <button onclick={() => loginAs('tester2@sklep.pl')}>Tester 2</button>
+    <button onclick={() => loginAs('admin@sklep.pl')} class="admin-btn">Admin</button>
   </div>
 </div>
 
