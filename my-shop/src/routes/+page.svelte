@@ -19,8 +19,8 @@
   let selectedQuantities = $state({});
 
   // --- STAN FORMULARZA ADMINA ---
-  let newName = $state(''), newDesc = $state(''), newPrice = $state(''), newImg = $state(''), newCat = $state(''), newStock = $state('');
-
+// Formularz admina
+  let newName = $state(''), newDesc = $state(''), newPrice = $state(''), newStock = $state(''), newImg = $state(''), newCat = $state('');
   // --- STAN EDYCJI PRODUKTU ---
   /** @type {any} */
   let editingProduct = $state(null);
@@ -30,10 +30,26 @@
   let deliveryPrice = $derived(data.deliveryMethods.find(d => d.id == selectedDeliveryId)?.price || 0);
   let finalTotal = $derived(itemsTotal + deliveryPrice);
 
-  onMount(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    currentUser = session?.user || null;
-    if (currentUser && !isAdmin) loadCart();
+  onMount(() => {
+   
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      currentUser = session?.user || null;
+      if (currentUser && !isAdmin) loadCart();
+    });
+
+    const subscription = supabase
+      .channel('produkty-channel')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'products' }, 
+        (payload) => {
+          console.log('Ktoś zmienił bazę! Odświeżam...', payload);
+          invalidateAll(); 
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(subscription);
+    };
   });
 
   // --- LOGOWANIE TESTOWE ---
@@ -244,21 +260,32 @@
 
   async function addProduct() {
     if (!newName || !newPrice) return alert('Podaj nazwę i cenę!');
-    
-    await supabase.from('products').insert([{ 
+
+    const parsedPrice = parseFloat(newPrice);
+    const parsedStock = parseInt(newStock) || 0; // Jeśli puste, dajemy 0 sztuk
+
+    // GŁÓWNA BLOKADA: Sprawdzamy czy liczby nie są ujemne
+    if (parsedPrice < 0 || parsedStock < 0) {
+      return alert('Błąd: Cena oraz ilość sztuk nie mogą być ujemne!');
+    }
+
+    const { error } = await supabase.from('products').insert([{ 
       name: newName, 
       description: newDesc, 
-      price: parseFloat(newPrice), 
+      price: parsedPrice, 
+      stock_quantity: parsedStock, // Wysyłamy stan magazynowy
       image_url: newImg || 'https://via.placeholder.com/150', 
-      category: newCat,
-      stock_quantity: parseInt(newStock) || 0 
+      category: newCat 
     }]);
 
-    //Czyszczenie pól
-    newName = ''; newDesc = ''; newPrice = ''; newImg = ''; newCat = ''; newStock ='';
-    invalidateAll();
+    if (error) {
+      alert('Błąd dodawania: ' + error.message);
+    } else {
+      // Czyścimy formularz po udanym dodaniu
+      newName = ''; newDesc = ''; newPrice = ''; newStock = ''; newImg = ''; newCat = '';
+      invalidateAll();
+    }
   }
-
 </script>
 
 <div class="dev-bar">
@@ -318,20 +345,20 @@
     <section class="admin-dashboard">
       <h2>🛠️ Panel Administratora - Dodaj Grę</h2>
       <div class="add-form">
-        <input type="text" bind:value={newName} placeholder="Nazwa" />
-        <input type="text" bind:value={newDesc} placeholder="Krótki opis" />
-        <input type="number" bind:value={newPrice} placeholder="Cena" />
+        <input type="text" bind:value={newName} placeholder="Nazwa gry" />
+        <input type="text" bind:value={newDesc} placeholder="Producent" />
+        
+        <input type="number" bind:value={newPrice} placeholder="Cena (zł)" min="0" step="1.0" />
+        <input type="number" bind:value={newStock} placeholder="Ilość sztuk (magazyn)" min="0" step="1" />
+        
         <input type="text" bind:value={newImg} placeholder="Link do obrazka" />
         <select bind:value={newCat}>
-          <option value="">--Rodzaj gry--</option>
+          <option value="">Gatunek...</option>
           <option value="RPG">RPG</option>
           <option value="FPS">FPS</option>
           <option value="Strategia">Strategia</option>
           <option value="Sportowa">Sportowa</option>
-          <option value="Horror">Horror</option>
-          <option value="Symulator">Symulator</option>
         </select>
-        <input type="number" bind:value={newStock} placeholder="Ilość sztuk" />
         <button class="order-btn" onclick={addProduct}>Dodaj grę</button>
       </div>
     </section>
