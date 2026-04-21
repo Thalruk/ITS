@@ -19,19 +19,47 @@
   let selectedQuantities = $state({});
 
   // --- STAN FORMULARZA ADMINA ---
-// Formularz admina
   let newName = $state(''), newDesc = $state(''), newPrice = $state(''), newStock = $state(''), newImg = $state(''), newCat = $state('');
+  
   // --- STAN EDYCJI PRODUKTU ---
   /** @type {any} */
   let editingProduct = $state(null);
+
+  // --- STAN FILTRÓW WIDOKU PRODUKTÓW ---
+  let searchQuery = $state('');
+  let selectedCategory = $state('');
+  let minPrice = $state(0);
+  let maxPrice = $state(9999);
+  let stockFilter = $state('all'); // Możliwe opcje: 'all', 'in_stock', 'out_of_stock'
 
   // --- OBLICZENIA ($derived) ---
   let itemsTotal = $derived(cart.reduce((acc, item) => acc + (item.products.price * item.quantity), 0));
   let deliveryPrice = $derived(data.deliveryMethods.find(d => d.id == selectedDeliveryId)?.price || 0);
   let finalTotal = $derived(itemsTotal + deliveryPrice);
 
+  // Pobranie unikalnych kategorii z dostępnych gier
+  let availableCategories = $derived([...new Set(data.products.map(p => p.category).filter(Boolean))]);
+
+  // Dynamiczne filtrowanie produktów
+  let filteredProducts = $derived(
+    data.products.filter(p => {
+      // Jeśli jesteś adminem, pomijamy warunek "is_hidden", żebyś zawsze widział ukryte, w przeciwnym razie pokazujemy tylko widoczne
+      const isVisible = isAdmin || !p.is_hidden;
+      
+      const matchesSearch = searchQuery === '' || p.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = selectedCategory === '' || p.category === selectedCategory;
+      const matchesPrice = p.price >= minPrice && p.price <= (maxPrice || 99999); // Jeśli usuniesz maxPrice, nie zablokuje drogich gier
+      const matchesStock = stockFilter === 'all' 
+        ? true 
+        : stockFilter === 'in_stock' 
+          ? p.stock_quantity > 0 
+          : p.stock_quantity === 0;
+
+      return isVisible && matchesSearch && matchesCategory && matchesPrice && matchesStock;
+    })
+  );
+
   onMount(() => {
-   
     supabase.auth.getSession().then(({ data: { session } }) => {
       currentUser = session?.user || null;
       if (currentUser && !isAdmin) loadCart();
@@ -43,8 +71,8 @@
         { event: '*', schema: 'public', table: 'products' }, 
         (payload) => {
           console.log('Ktoś zmienił bazę! Odświeżam...', payload);
-          invalidateAll(); // Odświeża katalog gier
-          if (currentUser && !isAdmin) loadCart(); // Odświeża koszyk klienta, jeśli stan się zmienił
+          invalidateAll(); 
+          if (currentUser && !isAdmin) loadCart(); 
         }
       )
       .subscribe();
@@ -67,12 +95,12 @@
   }
 
   // --- LOGIKA KOSZYKA (Tylko Klient) ---
- async function loadCart() {
+  async function loadCart() {
     const { data: c } = await supabase
       .from('cart_items')
       .select('id, quantity, product_id, products(*)')
       .eq('user_id', currentUser.id)
-      .order('id', { ascending: true }); // <-- TA LINIJKA ZATRZYMA SKAKANIE
+      .order('id', { ascending: true }); 
       
     cart = c || [];
   }
@@ -82,20 +110,16 @@
     if (!currentUser) return alert('Musisz być zalogowany jako klient, aby dokonać zakupu!');
     if (isAdmin) return alert('Admin nie robi zakupów!');
 
-    // Pobieramy ilość z okienka (jeśli puste, zakładamy 1)
     let requestedQty = selectedQuantities[product.id] || 1;
     if (requestedQty < 1) requestedQty = 1;
 
-    // Sprawdzamy, czy w ogóle mamy tyle na magazynie
     if (requestedQty > product.stock_quantity) {
       return alert(`Błąd: Mamy tylko ${product.stock_quantity} sztuk w magazynie!`);
     }
 
-    // Sprawdzamy, czy gra jest już w koszyku
     let existingItem = cart.find(c => c.product_id === product.id);
 
     if (existingItem) {
-      // Gra już tam jest -> Aktualizujemy ilość
       let newTotalQty = existingItem.quantity + requestedQty;
       if (newTotalQty > product.stock_quantity) {
         return alert(`Nie możesz dodać więcej! Masz już w koszyku ${existingItem.quantity} szt., a w magazynie jest łącznie ${product.stock_quantity} szt.`);
@@ -106,8 +130,6 @@
       else { alert('Zaktualizowano ilość w koszyku!'); loadCart(); }
       
     } else {
-      // Gry nie ma w koszyku -> Dodajemy jako nową pozycję
-      // Gry nie ma w koszyku na tym urządzeniu -> Dodajemy jako nową pozycję
       const { error } = await supabase.from('cart_items').insert({ 
         user_id: currentUser.id, 
         product_id: product.id, 
@@ -115,7 +137,6 @@
       });
 
       if (error) {
-        // Kod 23505 oznacza "Naruszenie unikalnego klucza" (ktoś na tym koncie już to dodał w tle)
         if (error.code === '23505') {
           alert('Ten produkt jest już w Twoim koszyku (został dodany w innej karcie urządzenia). Odświeżam koszyk!');
           loadCart();
@@ -136,7 +157,6 @@
     else loadCart();
   }
 
-  // --- CZYSZCZENIE CAŁEGO KOSZYKA ---
   async function clearCart() {
     if (!confirm('Czy na pewno chcesz usunąć wszystkie produkty z koszyka?')) return;
     const { error } = await supabase.from('cart_items').delete().eq('user_id', currentUser.id);
@@ -151,10 +171,7 @@
   async function updateCartQuantity(item, delta) {
     const newQty = item.quantity + delta;
 
-    // Nie pozwalamy zejść poniżej 1 (od tego jest przycisk Usuń)
     if (newQty < 1) return; 
-    
-    // Blokada przed dodaniem więcej niż jest na magazynie
     if (newQty > item.products.stock_quantity) {
       return alert(`Maksymalna dostępna ilość to ${item.products.stock_quantity} szt.`);
     }
@@ -165,21 +182,19 @@
       .eq('id', item.id);
 
     if (error) alert('Błąd: ' + error.message);
-    else loadCart(); // Odświeża koszyk i na nowo przelicza ceny
+    else loadCart(); 
   }
 
- async function placeOrder() {
+  async function placeOrder() {
     if (!selectedDeliveryId) return alert('Wybierz metodę dostawy!');
     if (!selectedPaymentId) return alert('Wybierz metodę płatności!');
     
-    // --- BRAMKA BEZPIECZEŃSTWA ---
     const productIds = cart.map(item => item.product_id);
     const { data: liveProducts, error: fetchError } = await supabase
       .from('products')
       .select('id, name, stock_quantity')
       .in('id', productIds);
 
-    // BEZPIECZNIK 1: Upewniamy się, że baza odpowiedziała poprawnie (naprawia błąd 'null')
     if (fetchError || !liveProducts) {
       return alert('Błąd połączenia z serwerem. Nie można zweryfikować stanu magazynu.');
     }
@@ -187,7 +202,6 @@
     for (const item of cart) {
       const liveProd = liveProducts.find(p => p.id === item.product_id);
       
-      // Sytuacja 1: Ktoś usunął grę z bazy lub wykupił ją całkowicie (0 sztuk)
       if (!liveProd || liveProd.stock_quantity === 0) {
         await supabase.from('cart_items').delete().eq('id', item.id);
         alert(`Niestety, gra "${item.products.name}" została wyprzedana! Usunęliśmy ją z Twojego koszyka.`);
@@ -196,7 +210,6 @@
         return;
       }
 
-      // Sytuacja 2: Ktoś wykupił część sztuk, mamy mniej niż chce klient
       if (liveProd.stock_quantity < item.quantity) {
         await supabase.from('cart_items').update({ quantity: liveProd.stock_quantity }).eq('id', item.id);
         alert(`Niestety, ktoś ubiegł Cię z zakupem i zostało tylko ${liveProd.stock_quantity} szt. gry "${item.products.name}"! Zaktualizowaliśmy Twój koszyk.`);
@@ -205,9 +218,7 @@
         return;
       }
     }
-    // --- KONIEC BRAMKI BEZPIECZEŃSTWA ---
 
-    // 1. Tworzymy nowe zamówienie
     const { data: order, error: oErr } = await supabase.from('orders').insert({
       user_id: currentUser.id, 
       total_amount: finalTotal, 
@@ -217,17 +228,13 @@
     }).select().single();
     if (oErr) return alert("Błąd zamówienia: " + oErr.message);
 
-    // 2. Kopiujemy do historii
     const orderItems = cart.map(item => ({
       order_id: order.id, product_id: item.product_id, quantity: item.quantity, price_at_time: item.products.price
     }));
     await supabase.from('order_items').insert(orderItems);
 
-    // 3. Zdejmujemy sztuki z magazynu 
     for (const item of cart) {
       const liveProd = liveProducts.find(p => p.id === item.product_id);
-      
-      // BEZPIECZNIK 2: Mówimy edytorowi "spokojnie, jeśli tu dotarł, to liveProd na 100% istnieje"
       if (liveProd) {
         const newStockQuantity = liveProd.stock_quantity - item.quantity;
         await supabase
@@ -237,10 +244,8 @@
       }
     }
 
-    // 4. Czyścimy koszyk
     await supabase.from('cart_items').delete().eq('user_id', currentUser.id);
     
-    // 5. Finalizacja
     alert('Dziękujemy! Zamówienie zostało złożone.');
     selectedDeliveryId = ''; 
     selectedPaymentId = '';
@@ -251,55 +256,49 @@
 
   // --- LOGIKA ADMINA ---
   /** @param {any} product */
-    async function toggleVisibility(product) {
-      // 1. Bezpieczne odwracanie statusu
-      const newStatus = product.is_hidden === true ? false : true;
-      
-      // 2. Dynamiczny tekst do okienka
-      const actionText = newStatus ? 'ukryć ten produkt przed klientami' : 'przywrócić widoczność tego produktu';
-      
-      // 3. Pytamy o potwierdzenie. Jeśli ktoś kliknie "Anuluj", funkcja się zatrzyma (return)
-      if (!confirm(`Czy na pewno chcesz ${actionText}?`)) return;
+  async function toggleVisibility(product) {
+    const newStatus = product.is_hidden === true ? false : true;
+    const actionText = newStatus ? 'ukryć ten produkt przed klientami' : 'przywrócić widoczność tego produktu';
+    if (!confirm(`Czy na pewno chcesz ${actionText}?`)) return;
 
-      // 4. Wysyłamy prośbę do Supabase
-      const { error } = await supabase
-        .from('products')
-        .update({ is_hidden: newStatus })
-        .eq('id', product.id);
+    const { error } = await supabase
+      .from('products')
+      .update({ is_hidden: newStatus })
+      .eq('id', product.id);
 
-      // 5. Sprawdzamy odpowiedź
-      if (error) {
-        alert('Błąd bazy danych: ' + error.message);
-      } else {
-        alert('Zapisano w bazie! Odświeżam stronę.');
-        invalidateAll();
-      }
+    if (error) {
+      alert('Błąd bazy danych: ' + error.message);
+    } else {
+      alert('Zapisano w bazie! Odświeżam stronę.');
+      invalidateAll();
     }
-    async function saveEdit() {
-      if (!editingProduct.name || !editingProduct.price) return alert('Podaj nazwę i cenę!');
-      
-      const { error } = await supabase
-        .from('products')
-        .update({
-          name: editingProduct.name,
-          description: editingProduct.description,
-          price: parseFloat(editingProduct.price),
-          image_url: editingProduct.image_url,
-          category: editingProduct.category,
-          stock_quantity: parseInt(editingProduct.stock_quantity) || 0
-        })
-        .eq('id', editingProduct.id);
+  }
 
-      if (error) {
-        alert('Błąd aktualizacji: ' + error.message);
-      } else {
-        alert('Zapisano zmiany!');
-        editingProduct = null; // Zamykamy okienko
-        invalidateAll(); // Odświeżamy widok
-      }
+  async function saveEdit() {
+    if (!editingProduct.name || !editingProduct.price) return alert('Podaj nazwę i cenę!');
+    
+    const { error } = await supabase
+      .from('products')
+      .update({
+        name: editingProduct.name,
+        description: editingProduct.description,
+        price: parseFloat(editingProduct.price),
+        image_url: editingProduct.image_url,
+        category: editingProduct.category,
+        stock_quantity: parseInt(editingProduct.stock_quantity) || 0
+      })
+      .eq('id', editingProduct.id);
+
+    if (error) {
+      alert('Błąd aktualizacji: ' + error.message);
+    } else {
+      alert('Zapisano zmiany!');
+      editingProduct = null; 
+      invalidateAll(); 
     }
+  }
 
-/** @param {number} productId */
+  /** @param {number} productId */
   async function deleteProduct(productId) {
     if (!confirm('UWAGA: Czy na pewno chcesz całkowicie usunąć ten produkt z bazy danych? Tej akcji nie można cofnąć!')) return;
     
@@ -311,7 +310,7 @@
     if (error) {
       alert('Błąd podczas usuwania: ' + error.message);
     } else {
-      invalidateAll(); // Odświeża widok po usunięciu
+      invalidateAll();
     }
   }
 
@@ -319,9 +318,8 @@
     if (!newName || !newPrice) return alert('Podaj nazwę i cenę!');
 
     const parsedPrice = parseFloat(newPrice);
-    const parsedStock = parseInt(newStock) || 0; // Jeśli puste, dajemy 0 sztuk
+    const parsedStock = parseInt(newStock) || 0; 
 
-    // GŁÓWNA BLOKADA: Sprawdzamy czy liczby nie są ujemne
     if (parsedPrice < 0 || parsedStock < 0) {
       return alert('Błąd: Cena oraz ilość sztuk nie mogą być ujemne!');
     }
@@ -330,7 +328,7 @@
       name: newName, 
       description: newDesc, 
       price: parsedPrice, 
-      stock_quantity: parsedStock, // Wysyłamy stan magazynowy
+      stock_quantity: parsedStock,
       image_url: newImg || 'https://via.placeholder.com/150', 
       category: newCat 
     }]);
@@ -338,7 +336,6 @@
     if (error) {
       alert('Błąd dodawania: ' + error.message);
     } else {
-      // Czyścimy formularz po udanym dodaniu
       newName = ''; newDesc = ''; newPrice = ''; newStock = ''; newImg = ''; newCat = '';
       invalidateAll();
     }
@@ -370,7 +367,6 @@
     <div class="modal-backdrop">
       <div class="modal-content add-form">
         <h2>✏️ Edytuj grę</h2>
-
         <label for="edit-name">Nazwa:</label>
         <input id="edit-name" type="text" bind:value={editingProduct.name} />
         
@@ -411,10 +407,8 @@
       <div class="add-form">
         <input type="text" bind:value={newName} placeholder="Nazwa gry" />
         <input type="text" bind:value={newDesc} placeholder="Producent" />
-        
         <input type="number" bind:value={newPrice} placeholder="Cena (zł)" min="0" step="1.0" />
         <input type="number" bind:value={newStock} placeholder="Ilość sztuk (magazyn)" min="0" step="1" />
-        
         <input type="text" bind:value={newImg} placeholder="Link do obrazka" />
         <select bind:value={newCat}>
           <option value="">Gatunek...</option>
@@ -520,59 +514,137 @@
 
   <section class="catalog">
     <h2>🕹️ Katalog Gier</h2>
+
+    <div class="filters-bar">
+      <input type="text" class="search-input" placeholder="Wyszukaj po tytule..." bind:value={searchQuery} />
+
+      <select bind:value={selectedCategory}>
+        <option value="">Wszystkie kategorie</option>
+        {#each availableCategories as cat}
+          <option value={cat}>{cat}</option>
+        {/each}
+      </select>
+
+      <div class="price-filter">
+        <label>Cena od:</label>
+        <input type="number" min="0" bind:value={minPrice} />
+        <label>do:</label>
+        <input type="number" min="0" bind:value={maxPrice} />
+      </div>
+
+      <select bind:value={stockFilter}>
+        <option value="all">Magazyn: Pokaż wszystkie</option>
+        <option value="in_stock">Tylko dostępne sztuki</option>
+        <option value="out_of_stock">Brak na magazynie</option>
+      </select>
+    </div>
+
     <div class="grid">
-          {#each data.products as p (p.id)}
-      
-            {#if !p.is_hidden || isAdmin}
-              <div class="card" class:hidden={p.is_hidden} class:empty-stock={p.stock_quantity === 0}>
-                <img src={p.image_url} alt={p.name} />
-                <div class="title-row">
-                  <h3>{p.name}</h3>
-                  {#if p.category}
-                    <span class="category-tag">{p.category}</span>
-                  {/if}
-                </div>
-                <p class="desc">{p.description}</p>
-                <p class="price">{p.price} zł</p>
-                <p class="stock">Dostępnych sztuk: <strong>{p.stock_quantity}</strong></p>
-
-                  {#if !isAdmin}
-                  {#if p.stock_quantity > 0}
-                    <div class="buy-section">
-                      <input type="number" min="1" max={p.stock_quantity} bind:value={selectedQuantities[p.id]} placeholder="1" class="qty-input" />
-                      <button class="buy-btn" onclick={() => addToCart(p)}>Do koszyka</button>
-                    </div>
-                  {:else}
-                    <button class="buy-btn out-of-stock" disabled>Brak w magazynie</button>
-                  {/if}
-                {/if}
-                
-                {#if isAdmin}
-                <div class="admin-controls">
-                    <button class="toggle-btn" class:restore={p.is_hidden} onclick={() => toggleVisibility(p)}>
-                      {p.is_hidden ? 'Przywróć widoczność' : 'Ukryj przed klientami'}
-                    </button>
-                    
-                    <button class="edit-btn" onclick={() => editingProduct = { ...p }}>
-                      Edytuj ✏️
-                    </button>
-
-                    <button class="del-btn" onclick={() => deleteProduct(p.id)}>
-                      Usuń z bazy 🗑️
-                    </button>
-                </div>
-                {/if}
-              </div>
+      {#each filteredProducts as p (p.id)}
+        <div class="card" class:hidden={p.is_hidden} class:empty-stock={p.stock_quantity === 0}>
+          <img 
+            src={p.image_url} 
+            alt={p.name} 
+            onerror={(e) => e.currentTarget.src = 'https://via.placeholder.com/220x140/2d3748/e2e8f0?text=Brak+Ok%C5%82adki'} 
+          />
+          
+          <div class="title-row">
+            <h3>{p.name}</h3>
+            {#if p.category}
+              <span class="category-tag">{p.category}</span>
             {/if}
-          {/each}
+          </div>
+          <p class="desc">{p.description}</p>
+          <p class="price">{p.price} zł</p>
+          <p class="stock">Dostępnych sztuk: <strong>{p.stock_quantity}</strong></p>
+
+          {#if !isAdmin}
+            {#if p.stock_quantity > 0}
+              <div class="buy-section">
+                <input type="number" min="1" max={p.stock_quantity} bind:value={selectedQuantities[p.id]} placeholder="1" class="qty-input" />
+                <button class="buy-btn" onclick={() => addToCart(p)}>Do koszyka</button>
+              </div>
+            {:else}
+              <button class="buy-btn out-of-stock" disabled>Brak w magazynie</button>
+            {/if}
+          {/if}
+          
+          {#if isAdmin}
+            <div class="admin-controls">
+                <button class="toggle-btn" class:restore={p.is_hidden} onclick={() => toggleVisibility(p)}>
+                  {p.is_hidden ? 'Przywróć widoczność' : 'Ukryj przed klientami'}
+                </button>
+                
+                <button class="edit-btn" onclick={() => editingProduct = { ...p }}>
+                  Edytuj ✏️
+                </button>
+
+                <button class="del-btn" onclick={() => deleteProduct(p.id)}>
+                  Usuń z bazy 🗑️
+                </button>
+            </div>
+          {/if}
         </div>
+      {:else}
+        <p style="grid-column: 1 / -1; text-align: center; color: #a0aec0; padding: 40px;">
+          Brak gier spełniających wybrane kryteria filtrowania.
+        </p>
+      {/each}
+    </div>
   </section>
 </main>
 
 <style>
   :global(body) { font-family: 'Segoe UI', sans-serif; background: #121212; color: white; margin: 0; }
   
-  /* Style paska dev */
+  /* --- STYLE DLA NOWEGO PANELA FILTRÓW --- */
+  .filters-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    background: #1a202c;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    align-items: center;
+    border: 1px solid #2d3748;
+  }
+
+  .filters-bar input, .filters-bar select {
+    background: #2d3748;
+    color: white;
+    border: 1px solid #4a5568;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    outline: none;
+  }
+
+  .filters-bar input:focus, .filters-bar select:focus {
+    border-color: #3182ce;
+  }
+
+  .search-input {
+    flex-grow: 1; /* Pozwala wyszukiwarce zająć najwięcej miejsca */
+    min-width: 200px;
+  }
+
+  .price-filter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .price-filter label {
+    font-size: 0.9rem;
+    color: #a0aec0;
+  }
+
+  .price-filter input[type="number"] {
+    width: 80px;
+  }
+  /* --------------------------------------- */
+
   .dev-bar { 
     background: #021e49; 
     color: #e2e8f0; 
@@ -581,7 +653,7 @@
     justify-content: space-between; 
     align-items: center; 
     font-size: 0.9rem;
-    border-bottom: 2px solid #3b82f6; /* Jasnoniebieski akcent na dole paska */
+    border-bottom: 2px solid #3b82f6;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
   }
   
@@ -594,18 +666,17 @@
     background: #1a6004; 
     color: rgb(255, 255, 255); 
     font-weight: bold;
-    transition: background 0.2s; /* Płynna zmiana koloru */
+    transition: background 0.2s; 
   }
   .dev-buttons button:hover { background: #35ba1e; }
   .dev-buttons .admin-btn { background: #b12828; }
   .dev-buttons .admin-btn:hover { background: #600202; }
-  /* Unikalny, grafitowy kolor dla przycisku Wyloguj */
   .dev-buttons .logout-btn { 
     background: #475569; 
     color: white; 
   }
   .dev-buttons .logout-btn:hover { 
-    background: #334155; /* Ciemniejszy odcień po najechaniu */
+    background: #334155; 
   }
   
   header { padding: 20px; background: #1f1f1f; border-bottom: 3px solid #3182ce; }
@@ -614,7 +685,6 @@
   .checkout-section, .admin-dashboard { background: #1a202c; padding: 20px; border-radius: 12px; margin-bottom: 40px; border: 1px solid #2d3748; }
   .cart-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #2d3748; align-items: center; }
   
-  /* Układ informacji o produkcie w koszyku */
   .cart-item-info {
     display: flex;
     align-items: center;
@@ -636,7 +706,6 @@
     color: #e2e8f0;
   }
 
-  /* Cena sumaryczna za daną pozycję */
   .cart-item-price {
     margin-left: auto; 
     color: #48bb78;
@@ -649,9 +718,8 @@
   .add-form { display: flex; gap: 10px; flex-wrap: wrap; }
   .add-form input, .add-form select { padding: 8px; border-radius: 4px; border: none; }
   
-  /* Poprawa widoczności listy dostaw w koszyku */
   .delivery-picker select {
-    background-color: #2d3748; /* Ciemne tło pasujące do reszty interfejsu */
+    background-color: #2d3748;
     color: white;
     border: 1px solid #4a5568;
     padding: 8px;
@@ -757,31 +825,29 @@
   }
 
   .buy-btn.out-of-stock {
-    background: #2d3748; /* Ciemnoszary, wchodzący w tło */
-    color: #718096; /* Zgaszony tekst */
+    background: #2d3748;
+    color: #718096;
     box-shadow: none;
     cursor: not-allowed;
-    border: 1px dashed #4a5568; /* Przerywana ramka potęguje efekt "braku" */
+    border: 1px dashed #4a5568;
   }
 
   .buy-btn.out-of-stock:hover {
-    transform: none; /* Wyłączamy animację skakania */
+    transform: none;
     background: #2d3748;
   }
 
-  /* Układ okienka ilości i przycisku zakupu obok siebie */
   .buy-section {
     display: flex;
     gap: 10px;
-    margin-top: auto; /* Przejmuje spychanie na dół od samego przycisku */
+    margin-top: auto; 
   }
 
   .buy-section .buy-btn {
-    margin-top: 0; /* Kasujemy margines przycisku, żeby nie psół układu */
-    flex: 1; /* Przycisk ma zająć resztę wolnego miejsca */
+    margin-top: 0; 
+    flex: 1; 
   }
 
-  /* Styl okienka z cyferką */
   .qty-input {
     width: 60px;
     padding: 10px;
@@ -794,7 +860,6 @@
     font-size: 1rem;
   }
 
-  /* Styl dla przycisku edycji */
   .edit-btn { 
     background: #d69e2e; 
     color: rgb(0, 0, 0);
@@ -808,12 +873,11 @@
   }
   .edit-btn:hover { background: #b7791f; }
 
-  /* Style dla Modala Edycji (Tło i okienko) */
   .modal-backdrop {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0, 0, 0, 0.8);
     display: flex; justify-content: center; align-items: center;
-    z-index: 1000; /* Zapewnia, że okno jest nad resztą strony */
+    z-index: 1000;
   }
   .modal-content {
     background: #1a202c; 
@@ -822,7 +886,7 @@
     width: 100%; 
     max-width: 450px; 
     border: 1px solid #4a5568;
-    flex-direction: column; /* Ustawia pola jedno pod drugim */
+    flex-direction: column;
   }
   .modal-content h2 { margin-top: 0; color: #e2e8f0; border-bottom: 1px solid #2d3748; padding-bottom: 10px;}
   .modal-content label { margin-top: 10px; font-size: 0.85rem; color: #a0aec0; }
@@ -837,15 +901,14 @@
   }
   .cancel-btn:hover { background: #2d3748; }
 
-/* Guzik 'Dodaj grę' i 'Zapłać i zamów' */
   .order-btn { 
     background: linear-gradient(135deg, #48bb78, #38a169);
     color: white;
     font-size: 1.1rem; 
     font-weight: bold;
     border: none;
-    border-radius: 8px; /* Zaokrąglone rogi */
-    padding: 12px 24px; /* Zapewnia odpowiednią wysokość i szerokość */
+    border-radius: 8px; 
+    padding: 12px 24px; 
     cursor: pointer;
     box-shadow: 0 4px 6px rgba(72, 187, 120, 0.25);
     transition: all 0.2s ease-in-out;
@@ -853,7 +916,7 @@
   
   .order-btn:hover {
     background: linear-gradient(135deg, #38a169, #2f855a);
-    transform: translateY(-2px); /* Delikatne uniesienie, jak przy Do koszyka */
+    transform: translateY(-2px); 
     box-shadow: 0 6px 8px rgba(72, 187, 120, 0.4);
   }
 
@@ -862,16 +925,14 @@
     box-shadow: 0 2px 4px rgba(72, 187, 120, 0.3);
   }
   
-  /* Specjalny przypadek dla panelu admina, by przycisk zajmował całą szerokość */
   .add-form .order-btn {
     width: 100%;
     margin-top: 10px;
   }
 
-  /* Układ tytułu i tagu w jednej linii */
   .title-row {
     display: flex;
-    justify-content: space-between; /* Tytuł na lewo, tag na prawo */
+    justify-content: space-between; 
     align-items: flex-start;
     gap: 10px;
     margin-bottom: 10px;
@@ -881,24 +942,22 @@
     margin: 0;
   }
 
-  /* Zgrabna odznaka gatunku gry */
   .category-tag {
-    background: #dad5d5; /* Zostawiłem Twój jasny kolor tła */
+    background: #dad5d5; 
     color: rgb(0, 0, 0);
-    font-size: 0.7rem; /* Nieco mniejsza czcionka */
+    font-size: 0.7rem; 
     font-weight: bold;
     padding: 4px 8px;
     border-radius: 12px;
     display: inline-block;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    white-space: nowrap; /* Zapobiega przenoszeniu do nowej linii */
+    white-space: nowrap; 
   }
 
-  /* Poprawa widoczności listy rozwijanej w panelu admina */
   .add-form select {
-    background-color: #2d3748; /* Ciemne tło pasujące do inputów */
-    color: white; /* Jasny tekst */
+    background-color: #2d3748; 
+    color: white; 
     border: 1px solid #4a5568;
     padding: 8px;
     border-radius: 4px;
@@ -938,7 +997,6 @@
     color: #a0aec0;
   }
 
-  /* Nagłówek koszyka z przyciskiem czyszczenia */
   .cart-header {
     display: flex;
     justify-content: space-between;
@@ -957,7 +1015,6 @@
   }
   .clear-cart-btn:hover { background: #e53e3e; }
 
-  /* Kontrolki plus i minus */
   .qty-controls {
     display: flex; align-items: center; gap: 5px;
     background: #2d3748; padding: 2px 5px; border-radius: 6px;
@@ -974,7 +1031,6 @@
   .qty-btn:hover:not(:disabled) { background: #3182ce; }
   .qty-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   
-  /* Nadpisanie Twojej poprzedniej szarej pigułki na licznik */
   .cart-item-qty {
     background: transparent; color: white; padding: 0 5px; font-weight: bold;
   }
