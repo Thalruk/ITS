@@ -108,11 +108,28 @@ body {
 
 .cart-item-info {
   display: grid;
-  grid-template-columns: minmax(160px, 1fr) auto minmax(92px, auto);
+  grid-template-columns: minmax(320px, 1fr) auto minmax(92px, auto);
   align-items: center;
   gap: 14px;
   flex: 1;
   min-width: 0;
+}
+
+.cart-product-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.cart-product-image {
+  width: 112px;
+  height: 156px;
+  flex: 0 0 112px;
+  border: 1px solid #303a48;
+  border-radius: 6px;
+  background: #0f1115;
+  object-fit: contain;
 }
 
 .cart-item-name {

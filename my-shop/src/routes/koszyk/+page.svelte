@@ -192,7 +192,12 @@
         {#each cart as item (item.id)}
           <div class="cart-item">
             <div class="cart-item-info">
-              <span class="cart-item-name">{item.products.name}</span>
+              <div class="cart-product-title">
+                {#if item.products.image_url}
+                  <img class="cart-product-image" src={item.products.image_url} alt={item.products.name} />
+                {/if}
+                <span class="cart-item-name">{item.products.name}</span>
+              </div>
 
               <div class="qty-controls">
                 <button class="qty-btn" onclick={() => updateCartQuantity(item, -1)} disabled={item.quantity <= 1}>-</button>
