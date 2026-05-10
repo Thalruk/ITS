@@ -3,6 +3,13 @@
   import { invalidateAll } from '$app/navigation';
   import { onMount } from 'svelte';
 
+  // --- STAN UI PROFILU ---
+  /** @type {boolean} */
+  let isHistoryVisible = $state(false); // Cała lista domyślnie schowana
+
+  // --- STAN NAWIGACJI ---
+  let activeView = $state('shop'); // Może być 'shop' lub 'profile'
+
   let { data } = $props();
 
   // --- STAN KONT I UPRAWNIEŃ ---
@@ -13,6 +20,8 @@
   // --- STAN KOSZYKA I CHECKOUTU ---
   /** @type {any[]} */
   let cart = $state([]);
+    /** @type {any[]} */
+  let orderHistory = $state([]);
   let selectedDeliveryId = $state('');
   let selectedPaymentId = $state('');
   /** @type {Record<number, number>} */
@@ -34,17 +43,17 @@
    
     supabase.auth.getSession().then(({ data: { session } }) => {
       currentUser = session?.user || null;
-      if (currentUser && !isAdmin) loadCart();
+      if (currentUser && !isAdmin) { loadCart(); loadOrders(); }
     });
 
     const subscription = supabase
       .channel('produkty-channel')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'products' }, 
-        (payload) => {
+    (payload) => {
           console.log('Ktoś zmienił bazę! Odświeżam...', payload);
           invalidateAll(); // Odświeża katalog gier
-          if (currentUser && !isAdmin) loadCart(); // Odświeża koszyk klienta, jeśli stan się zmienił
+          if (currentUser && !isAdmin) { loadCart(); loadOrders(); }
         }
       )
       .subscribe();
@@ -75,6 +84,58 @@
       .order('id', { ascending: true }); // <-- TA LINIJKA ZATRZYMA SKAKANIE
       
     cart = c || [];
+  }
+
+  // --- LOGIKA HISTORII ZAMÓWIEŃ ---
+  async function loadOrders() {
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select('id, created_at, total_amount, status, order_items(id, product_id, quantity, price_at_time, products(name))')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false });
+
+      if (error) console.error('Błąd pobierania historii:', error.message);
+      else orderHistory = orders || [];
+  }
+
+  /** @param {any} order */
+  async function returnOrder(order) {
+    if (!confirm(`Czy na pewno chcesz zwrócić zamówienie?`)) return;
+
+    // 1. Zmiana statusu zamówienia
+    const { error: statusError } = await supabase
+      .from('orders')
+      .update({ status: 'returned' })
+      .eq('id', order.id);
+
+    if (statusError) return alert("Błąd statusu: " + statusError.message);
+
+    // 2. Przywracanie produktów
+    for (const item of order.order_items) {
+      if (!item.product_id) {
+        console.error("Błąd: item.product_id jest undefined! Sprawdź zapytanie loadOrders.");
+        continue;
+      }
+
+      const { data: prod } = await supabase
+        .from('products')
+        .select('stock_quantity')
+        .eq('id', item.product_id)
+        .single();
+
+      if (prod) {
+        const { error: upErr } = await supabase
+          .from('products')
+          .update({ stock_quantity: prod.stock_quantity + item.quantity })
+          .eq('id', item.product_id);
+        
+        if (upErr) console.error("Błąd aktualizacji magazynu:", upErr.message);
+      }
+    }
+
+    alert('Zamówienie zwrócone poprawnie! Środki zostaną przelane na twoje konto.');
+    loadOrders(); 
+    invalidateAll(); 
   }
 
   /** @param {any} product */
@@ -246,7 +307,8 @@
     selectedPaymentId = '';
     
     loadCart(); 
-    invalidateAll(); 
+    invalidateAll();
+    loadOrders(); 
   }
 
   // --- LOGIKA ADMINA ---
@@ -350,6 +412,15 @@
     Widok: <strong>{!currentUser ? 'Niezalogowany Gość' : (isAdmin ? 'Admin' : 'Klient')}</strong>
     {#if currentUser}
       <small style="margin-left: 10px; opacity: 0.8;">({currentUser.email})</small>
+      
+      {#if !isAdmin}
+        <button 
+          class="nav-toggle-btn" 
+          onclick={() => activeView = activeView === 'shop' ? 'profile' : 'shop'}
+        >
+          {activeView === 'shop' ? '👤 Moje Konto' : '🛒 Wróć do sklepu'}
+        </button>
+      {/if}
     {/if}
   </span>
   
@@ -370,19 +441,14 @@
     <div class="modal-backdrop">
       <div class="modal-content add-form">
         <h2>✏️ Edytuj grę</h2>
-
         <label for="edit-name">Nazwa:</label>
         <input id="edit-name" type="text" bind:value={editingProduct.name} />
-        
         <label for="edit-desc">Producent:</label>
         <input id="edit-desc" type="text" bind:value={editingProduct.description} />
-        
         <label for="edit-price">Cena (zł):</label>
         <input id="edit-price" type="number" bind:value={editingProduct.price} />
-        
         <label for="edit-img">Link do obrazka:</label>
         <input id="edit-img" type="text" bind:value={editingProduct.image_url} />
-
         <label for="edit-cat">Rodzaj gry:</label>
         <select id="edit-cat" bind:value={editingProduct.category}>
           <option value="">Brak...</option>
@@ -393,10 +459,8 @@
           <option value="Horror">Horror</option>
           <option value="Symulator">Symulator</option>
         </select>
-        
         <label for="edit-stock">Ilość sztuk na magazynie:</label>
         <input id="edit-stock" type="number" bind:value={editingProduct.stock_quantity} />
-        
         <div class="modal-actions">
           <button class="order-btn" onclick={saveEdit}>Zapisz zmiany</button>
           <button class="cancel-btn" onclick={() => editingProduct = null}>Anuluj</button>
@@ -411,10 +475,8 @@
       <div class="add-form">
         <input type="text" bind:value={newName} placeholder="Nazwa gry" />
         <input type="text" bind:value={newDesc} placeholder="Producent" />
-        
-        <input type="number" bind:value={newPrice} placeholder="Cena (zł)" min="0" step="1.0" />
-        <input type="number" bind:value={newStock} placeholder="Ilość sztuk (magazyn)" min="0" step="1" />
-        
+        <input type="number" bind:value={newPrice} placeholder="Cena (zł)" min="0" />
+        <input type="number" bind:value={newStock} placeholder="Ilość sztuk" min="0" />
         <input type="text" bind:value={newImg} placeholder="Link do obrazka" />
         <select bind:value={newCat}>
           <option value="">Gatunek...</option>
@@ -453,120 +515,163 @@
     </section>
   {/if}
 
-  {#if currentUser && !isAdmin}
-    <section class="checkout-section">
-      <div class="cart-header">
-        <h2>🛒 Twój Koszyk</h2>
-        {#if cart.length > 0}
-          <button class="clear-cart-btn" onclick={clearCart}>Wyczyść koszyk 🗑️</button>
-        {/if}
-      </div>
-
-      <div class="cart-list">
-        {#each cart as item (item.id)}
-          <div class="cart-item">
-            <div class="cart-item-info">
-              <span class="cart-item-name">{item.products.name}</span>
-              
-              <div class="qty-controls">
-                <button class="qty-btn" onclick={() => updateCartQuantity(item, -1)} disabled={item.quantity <= 1}>-</button>
-                <span class="cart-item-qty">{item.quantity}</span>
-                <button class="qty-btn" onclick={() => updateCartQuantity(item, 1)} disabled={item.quantity >= item.products.stock_quantity}>+</button>
+  {#if activeView === 'shop'}
+    {#if currentUser && !isAdmin}
+      <section class="checkout-section">
+        <div class="cart-header">
+          <h2>🛒 Twój Koszyk</h2>
+          {#if cart.length > 0}
+            <button class="clear-cart-btn" onclick={clearCart}>Wyczyść koszyk 🗑️</button>
+          {/if}
+        </div>
+        <div class="cart-list">
+          {#each cart as item (item.id)}
+            <div class="cart-item">
+              <div class="cart-item-info">
+                <span class="cart-item-name">{item.products.name}</span>
+                <div class="qty-controls">
+                  <button class="qty-btn" onclick={() => updateCartQuantity(item, -1)} disabled={item.quantity <= 1}>-</button>
+                  <span class="cart-item-qty">{item.quantity}</span>
+                  <button class="qty-btn" onclick={() => updateCartQuantity(item, 1)} disabled={item.quantity >= item.products.stock_quantity}>+</button>
+                </div>
+                <span class="cart-item-price">{(item.products.price * item.quantity).toFixed(2)} zł</span>
               </div>
-
-              <span class="cart-item-price">{(item.products.price * item.quantity).toFixed(2)} zł</span>
+              <button class="remove-btn" onclick={() => removeFromCart(item.id)}>Usuń 🗑️</button>
             </div>
-            <button class="remove-btn" onclick={() => removeFromCart(item.id)}>Usuń 🗑️</button>
+          {:else}
+            <p>Koszyk jest pusty.</p>
+          {/each}
+        </div>
+        {#if cart.length > 0}
+          <div class="checkout-controls">
+            <div class="delivery-picker">
+              <label for="delivery">Dostawa:</label>
+              <select id="delivery" bind:value={selectedDeliveryId}>
+                <option value="">-- wybierz --</option>
+                {#each data.deliveryMethods as dm (dm.id)}
+                  <option value={dm.id}>{dm.name} (+{dm.price} zł)</option>
+                {/each}
+              </select>
+            </div>
+            <div class="payment-picker">
+              <label for="payment">Metoda płatności:</label>
+              <select id="payment" bind:value={selectedPaymentId}>
+                <option value="">-- wybierz --</option>
+                {#each data.paymentMethods as pm (pm.id)}
+                  <option value={pm.id}>{pm.name}</option>
+                {/each}
+              </select>
+            </div>
+            <div class="summary">
+              <p>Produkty: {itemsTotal.toFixed(2)} zł</p>
+              <p>Dostawa: {deliveryPrice.toFixed(2)} zł</p>
+              <hr>
+              <h3>Do zapłaty: {finalTotal.toFixed(2)} zł</h3>
+            </div>
+            <button class="order-btn" onclick={placeOrder}>Zapłać i zamów</button>
           </div>
-        {:else}
-          <p>Koszyk jest pusty.</p>
+        {/if}
+      </section>
+    {/if}
+
+    <section class="catalog">
+      <h2>🕹️ Katalog Gier</h2>
+      <div class="grid">
+        {#each data.products as p (p.id)}
+          {#if !p.is_hidden || isAdmin}
+            <div class="card" class:hidden={p.is_hidden} class:empty-stock={p.stock_quantity === 0}>
+              <img src={p.image_url} alt={p.name} />
+              <div class="title-row">
+                <h3>{p.name}</h3>
+                {#if p.category}
+                  <span class="category-tag">{p.category}</span>
+                {/if}
+              </div>
+              <p class="desc">{p.description}</p>
+              <p class="price">{p.price} zł</p>
+              <p class="stock">Dostępnych sztuk: <strong>{p.stock_quantity}</strong></p>
+              {#if !isAdmin}
+                {#if p.stock_quantity > 0}
+                  <div class="buy-section">
+                    <input type="number" min="1" max={p.stock_quantity} bind:value={selectedQuantities[p.id]} placeholder="1" class="qty-input" />
+                    <button class="buy-btn" onclick={() => addToCart(p)}>Do koszyka</button>
+                  </div>
+                {:else}
+                  <button class="buy-btn out-of-stock" disabled>Brak w magazynie</button>
+                {/if}
+              {/if}
+              {#if isAdmin}
+                <div class="admin-controls">
+                  <button class="toggle-btn" class:restore={p.is_hidden} onclick={() => toggleVisibility(p)}>
+                    {p.is_hidden ? 'Przywróć widoczność' : 'Ukryj przed klientami'}
+                  </button>
+                  <button class="edit-btn" onclick={() => editingProduct = { ...p }}>Edytuj ✏️</button>
+                  <button class="del-btn" onclick={() => deleteProduct(p.id)}>Usuń z bazy 🗑️</button>
+                </div>
+              {/if}
+            </div>
+          {/if}
         {/each}
       </div>
-      
-      {#if cart.length > 0}
-        <div class="checkout-controls">
-          <div class="delivery-picker">
-            <label for="delivery">Dostawa:</label>
-            <select id="delivery" bind:value={selectedDeliveryId}>
-              <option value="">-- wybierz --</option>
-              {#each data.deliveryMethods as dm (dm.id)}
-                <option value={dm.id}>{dm.name} (+{dm.price} zł)</option>
-              {/each}
-            </select>
-          </div>
+    </section>
+  {/if}
 
-          <div class="payment-picker">
-            <label for="payment">Metoda płatności:</label>
-            <select id="payment" bind:value={selectedPaymentId}>
-              <option value="">-- wybierz --</option>
-              {#each data.paymentMethods as pm (pm.id)}
-                <option value={pm.id}>{pm.name}</option>
-              {/each}
-            </select>
-          </div>
+  {#if activeView === 'profile' && currentUser && !isAdmin}
+    <div class="profile-header">
+      <button class="back-link" onclick={() => activeView = 'shop'}>← Powrót do zakupów</button>
+      <h1>Panel Klienta</h1>
+    </div>
 
-          <div class="summary">
-            <p>Produkty: {itemsTotal.toFixed(2)} zł</p>
-            <p>Dostawa: {deliveryPrice.toFixed(2)} zł</p>
-            <hr>
-            <h3>Do zapłaty: {finalTotal.toFixed(2)} zł</h3>
-          </div>
+    <section class="order-history-section">
+      <div 
+        class="section-header expandable" 
+        onclick={() => isHistoryVisible = !isHistoryVisible}
+        onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (isHistoryVisible = !isHistoryVisible)}
+        role="button"
+        tabindex="0"
+      >
+        <h2>
+          <span class="arrow {isHistoryVisible ? 'down' : ''}">▶</span>
+          📦 Twoja Historia Zamówień
+        </h2>
+      </div>
 
-          <button class="order-btn" onclick={placeOrder}>Zapłać i zamów</button>
+      {#if isHistoryVisible}
+        <div class="orders-list">
+          {#each orderHistory as order (order.id)}
+            <div class="order-card">
+              <div class="order-header">
+                <span><strong>Zamówienie nr:</strong> {order.id.slice(0, 8)}...</span>
+                <span><strong>Data:</strong> {new Date(order.created_at).toLocaleDateString()}</span>
+                <span><strong>Suma:</strong> {order.total_amount.toFixed(2)} zł</span>
+                <span class="status-badge {order.status}">
+                  {order.status === 'paid' ? 'Opłacone' : 'Zwrócone'}
+                </span>
+              </div>
+              
+              <div class="order-details-visible">
+                <ul class="order-items-list">
+                  {#each order.order_items as item (item.id)}
+                    <li>{item.quantity}x {item.products?.name} <small>({item.price_at_time} zł/szt)</small></li>
+                  {/each}
+                </ul>
+
+                {#if order.status === 'paid'}
+                  <div class="order-actions">
+                    <button class="return-btn" onclick={() => returnOrder(order)}>
+                      Zwróć zamówienie
+                    </button>
+                  </div>
+                {/if}
+              </div>
+            </div>
+          {:else}
+            <p>Nie masz jeszcze żadnych zamówień.</p>
+          {/each}
         </div>
       {/if}
     </section>
   {/if}
-
-  <section class="catalog">
-    <h2>🕹️ Katalog Gier</h2>
-    <div class="grid">
-          {#each data.products as p (p.id)}
-      
-            {#if !p.is_hidden || isAdmin}
-              <div class="card" class:hidden={p.is_hidden} class:empty-stock={p.stock_quantity === 0}>
-                <img src={p.image_url} alt={p.name} />
-                <div class="title-row">
-                  <h3>{p.name}</h3>
-                  {#if p.category}
-                    <span class="category-tag">{p.category}</span>
-                  {/if}
-                </div>
-                <p class="desc">{p.description}</p>
-                <p class="price">{p.price} zł</p>
-                <p class="stock">Dostępnych sztuk: <strong>{p.stock_quantity}</strong></p>
-
-                  {#if !isAdmin}
-                  {#if p.stock_quantity > 0}
-                    <div class="buy-section">
-                      <input type="number" min="1" max={p.stock_quantity} bind:value={selectedQuantities[p.id]} placeholder="1" class="qty-input" />
-                      <button class="buy-btn" onclick={() => addToCart(p)}>Do koszyka</button>
-                    </div>
-                  {:else}
-                    <button class="buy-btn out-of-stock" disabled>Brak w magazynie</button>
-                  {/if}
-                {/if}
-                
-                {#if isAdmin}
-                <div class="admin-controls">
-                    <button class="toggle-btn" class:restore={p.is_hidden} onclick={() => toggleVisibility(p)}>
-                      {p.is_hidden ? 'Przywróć widoczność' : 'Ukryj przed klientami'}
-                    </button>
-                    
-                    <button class="edit-btn" onclick={() => editingProduct = { ...p }}>
-                      Edytuj ✏️
-                    </button>
-
-                    <button class="del-btn" onclick={() => deleteProduct(p.id)}>
-                      Usuń z bazy 🗑️
-                    </button>
-                </div>
-                {/if}
-              </div>
-            {/if}
-          {/each}
-        </div>
-  </section>
 </main>
 
 <style>
@@ -978,5 +1083,78 @@
   .cart-item-qty {
     background: transparent; color: white; padding: 0 5px; font-weight: bold;
   }
+
+  /* --- HISTORIA ZAMÓWIEŃ --- */
+  .order-history-section { background: #1a202c; padding: 20px; border-radius: 12px; margin-bottom: 40px; border: 1px solid #2d3748; }
+  .order-card { background: #2d3748; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #3182ce; }
+  .order-header { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; font-size: 0.9rem; border-bottom: 1px solid #4a5568; padding-bottom: 10px;}
+  .order-items-list { list-style-type: none; padding: 0; margin: 0; font-size: 0.9rem; color: #e2e8f0; }
+  .order-items-list li { margin-bottom: 5px; }
+  .order-items-list small { color: #a0aec0; }
+  
+  .status-badge { padding: 3px 8px; border-radius: 12px; font-weight: bold; font-size: 0.8rem; }
+  .status-badge.paid { background: #276749; color: #9ae6b4; }
+  .status-badge.returned { background: #742a2a; color: #feb2b2; }
+
+  .order-actions { margin-top: 15px; text-align: right; }
+  .return-btn { background: #e53e3e; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold; transition: background 0.2s;}
+  .return-btn:hover { background: #c53030; }
+
+  .nav-toggle-btn {
+    background: #3182ce;
+    color: white;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 6px;
+    margin-left: 15px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: bold;
+    transition: background 0.2s;
+  }
+  .nav-toggle-btn:hover { background: #2b6cb0; }
+
+  .profile-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 30px;
+  }
+
+  .back-link {
+    background: transparent;
+    color: #a0aec0;
+    border: 1px solid #4a5568;
+    padding: 8px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .back-link:hover { color: white; border-color: white; }
+
+  /* Nagłówek całej sekcji historii */
+  .section-header.expandable {
+    cursor: pointer;
+    padding: 10px;
+    border-radius: 8px;
+    transition: background 0.2s;
+  }
+  .section-header.expandable:hover { background: #2d3748; }
+  .section-header h2 { margin: 0; display: flex; align-items: center; gap: 15px; border: none; }
+
+  /* Kontener na listę zamówień */
+  .orders-list {
+    margin-top: 15px;
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  /* Wygląd produktów wewnątrz karty */
+  .order-details-visible {
+    padding: 15px 0 0 0;
+    border-top: 1px solid #4a5568;
+    margin-top: 10px;
+  }
+
+  .order-header { cursor: default; }
 
 </style>
