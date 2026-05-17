@@ -12,6 +12,6 @@ export async function load() {
     deliveryMethods: delivery ?? [],
     adminTasks: tasks ?? [],
     inquiries: inquiries ?? [],
-    paymentMethods: paymentMethods || []
+    paymentMethods: paymentMethods ?? []
   };
 }
