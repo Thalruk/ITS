@@ -16,8 +16,16 @@
   let selectedDeliveryId = $state('');
   let selectedPaymentId = $state('');
 
-  let itemsTotal = $derived(cart.reduce((acc, item) => acc + item.products.price * item.quantity, 0));
-  let deliveryPrice = $derived(data.deliveryMethods.find((d) => d.id == selectedDeliveryId)?.price || 0);
+  /** @param {any} product */
+  function getActivePrice(product) {
+    return (product.promo_price > 0 && product.promo_price < product.price) 
+        ? product.promo_price 
+        : product.price;
+  }
+
+  // ZAKTUALIZOWANA SUMA: Używa naszej funkcji getActivePrice zamiast sztywnego product.price
+  let itemsTotal = $derived(cart.reduce((acc, item) => acc + getActivePrice(item.products) * item.quantity, 0));
+  let deliveryPrice = $derived(data.deliveryMethods.find((/** @type {any} */ d) => d.id == selectedDeliveryId)?.price || 0);
   let finalTotal = $derived(itemsTotal + deliveryPrice);
 
   onMount(() => {
@@ -94,7 +102,7 @@
     }
 
     for (const item of cart) {
-      const liveProd = liveProducts.find((p) => p.id === item.product_id);
+      const liveProd = liveProducts.find((/** @type {any} */ p) => p.id === item.product_id);
 
       if (!liveProd || liveProd.stock_quantity === 0) {
         await supabase.from('cart_items').delete().eq('id', item.id);
@@ -133,13 +141,14 @@
       order_id: order.id,
       product_id: item.product_id,
       quantity: item.quantity,
-      price_at_time: item.products.price
+      // Zapisujemy do faktury/historii promocyjną cenę, by wszystko się zgadzało
+      price_at_time: getActivePrice(item.products)
     }));
 
     await supabase.from('order_items').insert(orderItems);
 
     for (const item of cart) {
-      const liveProd = liveProducts.find((p) => p.id === item.product_id);
+      const liveProd = liveProducts.find((/** @type {any} */ p) => p.id === item.product_id);
 
       if (liveProd) {
         await supabase
@@ -205,7 +214,21 @@
                 <button class="qty-btn" onclick={() => updateCartQuantity(item, 1)} disabled={item.quantity >= item.products.stock_quantity}>+</button>
               </div>
 
-              <span class="cart-item-price">{(item.products.price * item.quantity).toFixed(2)} zł</span>
+              <div class="cart-price-wrapper">
+                {#if item.products.promo_price > 0 && item.products.promo_price < item.products.price}
+                  <span class="cart-item-price" style="text-decoration: line-through; color: #aeb9c8; font-size: 0.85rem; display: block; text-align: right;">
+                    {(item.products.price * item.quantity).toFixed(2)} zł
+                  </span>
+                  <span class="cart-item-price" style="color: #ff3366; display: block; text-align: right;">
+                    {(item.products.promo_price * item.quantity).toFixed(2)} zł
+                  </span>
+                {:else}
+                  <span class="cart-item-price" style="display: block; text-align: right;">
+                    {(item.products.price * item.quantity).toFixed(2)} zł
+                  </span>
+                {/if}
+              </div>
+
             </div>
             <button class="remove-btn" onclick={() => removeFromCart(item.id)}>Usuń</button>
           </div>

@@ -231,13 +231,20 @@ body {
   border: 1px solid #26303d;
   border-radius: 8px;
   display: grid;
-  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  grid-template-columns: repeat(2, minmax(180px, 1fr)); /* Siatka dzieli przestrzeń idealnie na pół */
   gap: 16px;
+  width: 100%; /* Wymuszenie równego rozciągnięcia głównego paska */
+  box-sizing: border-box;
 }
 
+/* Wymuszamy, aby oba kontenery opcji zajmowały 100% swojej kolumny */
 .delivery-picker,
 .payment-picker {
   margin: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column; /* Układa label nad selectem w czysty sposób */
+  box-sizing: border-box;
 }
 
 .delivery-picker label,
@@ -249,9 +256,11 @@ body {
   margin-bottom: 7px;
 }
 
+/* GŁÓWNA POPRAWKA ROZCIĄGANIA: Selecty muszą bezwzględnie wypełniać rodzica */
 .delivery-picker select,
 .payment-picker select {
   width: 100%;
+  max-width: 100%; /* Blokada przed jakimkolwiek uciekaniem na boki */
   background: #1b222c;
   color: white;
   border: 1px solid #3a4656;
@@ -260,6 +269,7 @@ body {
   cursor: pointer;
   font-size: 0.95rem;
   outline: none;
+  box-sizing: border-box; /* Kluczowe, by paddingi nie rozpychały selecta poza 100% */
 }
 
 .delivery-picker select:focus,
