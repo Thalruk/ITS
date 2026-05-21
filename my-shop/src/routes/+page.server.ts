@@ -1,29 +1,25 @@
-import { supabase } from '$lib/supabaseClient';
-
-export async function load({ locals: { safeGetSession, supabase } }) {
-  const { user } = await safeGetSession();
-  let userRole = 'user'; // Domyślnie zwykły user
-
-  if (user) {
-    // Pobieramy Twoją nową kolumnę 'user_role'
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('user_role')
-      .eq('id', user.id)
-      .single();
-
-    if (profile && !error) {
-      // Przypisujemy wartość z bazy (admin lub user)
-      userRole = profile.user_role;
-    }
+import { redirect } from '@sveltejs/kit';
+export const actions = {
+  logout: async ({ locals: { supabase } }) => {
+    await supabase.auth.signOut();
   }
-
-  // Pobieranie produktów bez zmian
-  const { data: products } = await supabase.from('products').select('*');
+};
+export const load = async ({ locals: { supabase } }) => {
+  // Główna strona musi pobierać produkty, żeby nie świeciła pustkami
+  const [products, delivery, tasks, inquiries, payment] = await Promise.all([
+    supabase.from('products').select('*').order('created_at', { ascending: false }),
+    supabase.from('delivery_methods').select('*').eq('is_active', true),
+    supabase.from('admin_tasks').select('*').order('created_at', { ascending: false }),
+    supabase.from('product_inquiries').select('*, products(name)').order('created_at', { ascending: false }),
+    supabase.from('payment_methods').select('*').eq('is_active', true)
+  ]);
 
   return {
-    products: products ?? [],
-    // Przekazujemy wzbogacony obiekt usera do frontendu
-    user: user ? { ...user, role: userRole } : null
+    products: products.data ?? [],
+    deliveryMethods: delivery.data ?? [],
+    adminTasks: tasks.data ?? [],
+    inquiries: inquiries.data ?? [],
+    paymentMethods: payment.data ?? []
   };
-}
+
+};
