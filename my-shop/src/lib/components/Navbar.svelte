@@ -45,10 +45,15 @@
                     <span class="cart-badge">{cartCount}</span>
                 {/if}
             </a>
-            
+            <a href="/zamowienia" class="icon-btn" aria-label="Zamówienia i Zwroty" title="Zamówienia i Zwroty">
+                <span style="font-size: 1.4rem;">📦</span>
+            </a>
+
             <button class="mobile-toggle" onclick={toggleMobileMenu}>
                 ☰
             </button>
+            
+            
         </div>
     </div>
 </nav>
@@ -70,6 +75,27 @@
     .ui-icon { width: 24px; height: 24px; filter: invert(1); }
     .cart-badge { position: absolute; top: 0; right: 0; background-color: #00ffcc; color: #0f0f14; border-radius: 50%; padding: 0.15rem 0.4rem; font-size: 0.75rem; font-weight: bold; transform: translate(25%, -25%); }
     .mobile-toggle { display: none; background: none; border: none; color: #ffffff; font-size: 1.8rem; cursor: pointer; }
+    .nav-orders-btn {
+    background: transparent;
+    color: #e2e8f0;
+    border: 1px solid #4a5568;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .nav-orders-btn:hover {
+    background: #2d3748;
+    border-color: #3182ce;
+    color: white;
+    transform: translateY(-1px);
+  }
     @media (max-width: 1100px) {
         .nav-links { display: none; flex-direction: column; position: absolute; top: 100%; left: 0; width: 100%; background-color: #0f0f14; padding: 1rem 0; border-top: 1px solid #2a2a35; }
         .nav-links.mobile-open { display: flex; }
