@@ -46,6 +46,7 @@
             <option value="Sportowa">Sportowa</option>
             <option value="Horror">Horror</option>
             <option value="Symulator">Symulator</option>
+            <option value="Akcja/Przygoda">Akcja/Przygoda</option>
         </select>
 
         <div class="checkbox-group">
