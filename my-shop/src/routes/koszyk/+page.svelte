@@ -20,10 +20,18 @@
   let selectedDeliveryId = $state('');
   let selectedPaymentId = $state('');
 
-  // NOWY STAN NA DANE FORMULARZA:
+ 
+ // NOWY STAN NA DANE FORMULARZA (Rozbita ulica i dodany Paczkomat)
   let shippingData = $state({
-      firstName: '', lastName: '', street: '', postalCode: '', city: '', country: 'Polska', phone: ''
+      firstName: '', lastName: '', 
+      streetName: '', buildingNumber: '', apartmentNumber: '', 
+      postalCode: '', city: '', country: 'Polska', phone: '', paczkomatId: ''
   });
+
+// Sprawdzamy czy w nazwie wybranej dostawy jest słowo "paczkomat" (niezależnie od wielkości liter)
+  let isPaczkomat = $derived(
+      data.deliveryMethods.find((/** @type {any} */ d) => d.id == selectedDeliveryId)?.name.toLowerCase().includes('paczkomat') || false
+  );
 
   /** @param {any} product */
   function getActivePrice(product) {
@@ -100,13 +108,19 @@
           finalTotal: finalTotal,
           deliveryId: selectedDeliveryId,
           paymentId: selectedPaymentId,
-          shippingData: shippingData
+          shippingData: shippingData,
+          isPaczkomat: isPaczkomat 
       });
+    
 
       if (success === true) {
           selectedDeliveryId = '';
           selectedPaymentId = '';
-          shippingData = { firstName: '', lastName: '', street: '', postalCode: '', city: '', country: 'Polska', phone: '' };
+          shippingData = { 
+              firstName: '', lastName: '', 
+              streetName: '', buildingNumber: '', apartmentNumber: '', 
+              postalCode: '', city: '', country: 'Polska', phone: '', paczkomatId: '' 
+          };
           loadCart();
           invalidateAll();
       } else if (typeof success === 'object' && success !== null && success.action === 'refresh_cart') {
@@ -189,7 +203,7 @@
 
       {#if cart.length > 0}
         
-        <CheckoutForm bind:shippingData={shippingData} />
+        <CheckoutForm bind:shippingData={shippingData} isPaczkomat={isPaczkomat} />
         
         <div class="checkout-controls">
           <div class="delivery-picker">

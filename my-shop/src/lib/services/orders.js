@@ -60,23 +60,47 @@ export async function returnOrder(order) {
 
 /**
  * Główna funkcja składania zamówienia.
- * @param {{userId: any, cart: any[], finalTotal: number, deliveryId: any, paymentId: any, shippingData: any}} params
+ * @param {{userId: any, cart: any[], finalTotal: number, deliveryId: any, paymentId: any, shippingData: any, isPaczkomat: boolean}} params
  */
-export async function placeOrder({ userId, cart, finalTotal, deliveryId, paymentId, shippingData }) {
+export async function placeOrder({ userId, cart, finalTotal, deliveryId, paymentId, shippingData, isPaczkomat }) {
     if (!deliveryId) { alert('Wybierz metodę dostawy!'); return false; }
     if (!paymentId) { alert('Wybierz metodę płatności!'); return false; }
     
-    // Walidacja danych formularza
-    if (!shippingData || !shippingData.street || !shippingData.city || !shippingData.postalCode) {
-        alert('Proszę wypełnić wszystkie wymagane dane adresowe w koszyku!');
+    // 1. ZBUDOWANIE OSTATECZNEGO ADRESU (KLEJENIE DANYCH)
+    let finalStreet = '';
+
+    if (isPaczkomat) {
+        if (!shippingData.paczkomatId || !shippingData.phone) {
+            alert('Dla przesyłki InPost wymagany jest Kod Paczkomatu oraz Numer Telefonu!');
+            return false;
+        }
+        finalStreet = `Paczkomat: ${shippingData.paczkomatId}`;
+    } else {
+        if (!shippingData.streetName || !shippingData.buildingNumber) {
+            alert('Proszę podać ulicę i numer budynku!');
+            return false;
+        }
+        // Sklejamy ulicę: "Sezamkowa 15" lub "Sezamkowa 15/2"
+        finalStreet = `${shippingData.streetName} ${shippingData.buildingNumber}`;
+        if (shippingData.apartmentNumber) {
+            finalStreet += `/${shippingData.apartmentNumber}`;
+        }
+    }
+
+    // 2. PODSTAWOWA WALIDACJA RESZTY FORMULARZA
+    if (!shippingData.firstName || !shippingData.lastName || !shippingData.city || !shippingData.postalCode) {
+        alert('Proszę wypełnić wszystkie wymagane dane (Imię, Nazwisko, Miasto, Kod pocztowy)!');
         return false;
     }
     
+    // --- BRAMKA BEZPIECZEŃSTWA MAGAZYNU ---
     const productIds = cart.map((/** @type {any} */ item) => item.product_id);
     const { data: liveProducts, error: fetchError } = await supabase
       .from('products')
       .select('id, name, stock_quantity')
       .in('id', productIds);
+
+    
 
     if (fetchError || !liveProducts) {
       alert('Błąd połączenia z serwerem.');
@@ -106,15 +130,14 @@ export async function placeOrder({ userId, cart, finalTotal, deliveryId, payment
     }
 
     // 2. ZAPIS ADRESU DO TABELI 'addresses'
-    const { data: addressData, error: addrErr } = await supabase.from('addresses').insert({
+   const { data: addressData, error: addrErr } = await supabase.from('addresses').insert({
         user_id: userId,
-        street: shippingData.street,
+        street: finalStreet, // <--- TUTAJ UŻYWAMY NASZEJ SKLEJONEJ ZMIENNEJ!
         city: shippingData.city,
         postal_code: shippingData.postalCode,
         country: shippingData.country || 'Polska',
         is_default: true
     }).select().single();
-
     if (addrErr) {
         alert("Błąd zapisu adresu: " + addrErr.message);
         return false;
