@@ -58,72 +58,86 @@ export async function returnOrder(order) {
 }
 
 /**
- * Główna funkcja składania zamówienia.
- * @param {{userId: any, cart: any[], finalTotal: number, deliveryId: any, paymentId: any}} params
+ * Główna funkcja składania zamówienia dostosowana do schematu relacyjnego bazy.
+ * @param {{userId: any, cart: any[], finalTotal: number, deliveryId: any, paymentId: any, shippingData: any}} params
  */
-export async function placeOrder({ userId, cart, finalTotal, deliveryId, paymentId }) {
-    if (!deliveryId) return alert('Wybierz metodę dostawy!');
-    if (!paymentId) return alert('Wybierz metodę płatności!');
+export async function placeOrder({ userId, cart, finalTotal, deliveryId, paymentId, shippingData }) {
+    if (!deliveryId) { alert('Wybierz metodę dostawy!'); return false; }
+    if (!paymentId) { alert('Wybierz metodę płatności!'); return false; }
     
-    const productIds = cart.map((/** @type {any} */ item) => item.product_id);
-    const { data: liveProducts, error: fetchError } = await supabase
-      .from('products')
-      .select('id, name, stock_quantity')
-      .in('id', productIds);
+    // Walidacja formularza
+    if (!shippingData.firstName || !shippingData.lastName || !shippingData.street || !shippingData.city || !shippingData.postalCode) {
+        alert('Proszę wypełnić wszystkie wymagane dane adresowe!');
+        return false;
+    }
+    
+    const productIds = cart.map(item => item.product_id);
+    const { data: liveProducts, error: fetchError } = await supabase.from('products').select('id, name, stock_quantity').in('id', productIds);
 
     if (fetchError || !liveProducts) {
-      alert('Błąd połączenia z serwerem.');
-      return false;
+        alert('Błąd połączenia z serwerem.');
+        return false;
     }
 
-    /** @type {any} */
     for (const item of cart) {
-      const liveProd = liveProducts.find((/** @type {any} */ p) => p.id === item.product_id);
-      if (!liveProd || liveProd.stock_quantity === 0) {
-        alert(`Niestety, gra "${item.products.name}" została wyprzedana!`);
-        return { action: 'refresh_cart' };
-      }
-
-      if (liveProd.stock_quantity < item.quantity) {
-        alert(`Niestety, zostało tylko ${liveProd.stock_quantity} sztuk gry "${item.products.name}"!`);
-        return { action: 'refresh_cart' };
-      }
+        const liveProd = liveProducts.find(p => p.id === item.product_id);
+        if (!liveProd || liveProd.stock_quantity === 0) {
+            alert(`Niestety, gra "${item.products.name}" została wyprzedana!`);
+            return { action: 'refresh_cart' };
+        }
+        if (liveProd.stock_quantity < item.quantity) {
+            alert(`Niestety, zostało tylko ${liveProd.stock_quantity} sztuk gry "${item.products.name}"!`);
+            return { action: 'refresh_cart' };
+        }
     }
 
+    // 1. ZAPISZ IMIĘ I NAZWISKO DO PROFILU 
+    await supabase.from('profiles').update({
+        first_name: shippingData.firstName,
+        last_name: shippingData.lastName
+    }).eq('id', userId);
+
+    // 2. ZAPIS ADRESU DO TABELI 'addresses'
+    const { data: addressData, error: addrErr } = await supabase.from('addresses').insert({
+        user_id: userId,
+        street: shippingData.street,
+        city: shippingData.city,
+        postal_code: shippingData.postalCode,
+        country: shippingData.country || 'Polska',
+        is_default: true
+    }).select().single();
+
+    if (addrErr) { alert("Błąd zapisu adresu: " + addrErr.message); return false; }
+
+    // 3. TWORZENIE ZAMÓWIENIA W 'orders' 
     const { data: order, error: oErr } = await supabase.from('orders').insert({
       user_id: userId, 
       total_amount: finalTotal, 
       delivery_method_id: deliveryId, 
       payment_method_id: paymentId,
+      address_id: addressData.id, 
       status: 'paid'
     }).select().single();
 
-    if (oErr) {
-        alert("Błąd zamówienia: " + oErr.message);
-        return false;
-    }
+    if (oErr) { alert("Błąd zamówienia: " + oErr.message); return false; }
 
-    const orderItems = cart.map((/** @type {any} */ item) => ({
-      order_id: order.id, 
-      product_id: item.product_id, 
-      quantity: item.quantity, 
-      price_at_time: item.products.price
+    // 4. HISTORIA POZYCJI W ZAMÓWIENIU
+    const orderItems = cart.map(item => ({
+      order_id: order.id, product_id: item.product_id, quantity: item.quantity, price_at_time: item.products.price
     }));
     await supabase.from('order_items').insert(orderItems);
 
-    /** @type {any} */
+    // 5. AKTUALIZACJA MAGAZYNU
     for (const item of cart) {
-      const liveProd = liveProducts.find((/** @type {any} */ p) => p.id === item.product_id);
+      const liveProd = liveProducts.find(p => p.id === item.product_id);
       if (liveProd) {
-        await supabase
-          .from('products')
-          .update({ stock_quantity: liveProd.stock_quantity - item.quantity })
-          .eq('id', item.product_id);
+        await supabase.from('products').update({ stock_quantity: liveProd.stock_quantity - item.quantity }).eq('id', item.product_id);
       }
     }
 
+    // 6. CZYSZCZENIE KOSZYKA
     await supabase.from('cart_items').delete().eq('user_id', userId);
 
-    alert('Dziękujemy! Zamówienie zostało złożone.');
+    alert('Dziękujemy! Zamówienie zostało złożone pomyślnie.');
     return true;
 }

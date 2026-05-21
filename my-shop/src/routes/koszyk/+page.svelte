@@ -3,6 +3,10 @@
   import { invalidateAll } from '$app/navigation';
   import { onMount } from 'svelte';
   import './koszyk.css';
+  
+  // NOWE IMPORTY DO OBSŁUGI ZAMÓWIEŃ:
+  import CheckoutForm from '$lib/components/CheckoutForm.svelte';
+  import { placeOrder } from '$lib/services/orders.js';
 
   let { data } = $props();
 
@@ -16,6 +20,11 @@
   let selectedDeliveryId = $state('');
   let selectedPaymentId = $state('');
 
+  // NOWY STAN NA DANE FORMULARZA:
+  let shippingData = $state({
+      firstName: '', lastName: '', street: '', postalCode: '', city: '', country: 'Polska', phone: ''
+  });
+
   /** @param {any} product */
   function getActivePrice(product) {
     return (product.promo_price > 0 && product.promo_price < product.price) 
@@ -23,7 +32,6 @@
         : product.price;
   }
 
-  // ZAKTUALIZOWANA SUMA: Używa naszej funkcji getActivePrice zamiast sztywnego product.price
   let itemsTotal = $derived(cart.reduce((acc, item) => acc + getActivePrice(item.products) * item.quantity, 0));
   let deliveryPrice = $derived(data.deliveryMethods.find((/** @type {any} */ d) => d.id == selectedDeliveryId)?.price || 0);
   let finalTotal = $derived(itemsTotal + deliveryPrice);
@@ -53,7 +61,6 @@
       .select('id, quantity, product_id, products(*)')
       .eq('user_id', currentUser.id)
       .order('id', { ascending: true });
-
     cart = c || [];
   }
 
@@ -74,7 +81,6 @@
   /** @param {any} item @param {number} delta */
   async function updateCartQuantity(item, delta) {
     const newQty = item.quantity + delta;
-
     if (newQty < 1) return;
 
     if (newQty > item.products.stock_quantity) {
@@ -82,95 +88,39 @@
     }
 
     const { error } = await supabase.from('cart_items').update({ quantity: newQty }).eq('id', item.id);
-
     if (error) alert('Błąd: ' + error.message);
     else loadCart();
   }
 
-  async function placeOrder() {
-    if (!selectedDeliveryId) return alert('Wybierz metodę dostawy!');
-    if (!selectedPaymentId) return alert('Wybierz metodę płatności!');
+  // --- FUNKCJA WYSYŁAJĄCA DANE DO orders.js ---
+ async function handlePlaceOrder() {
+      const success = await placeOrder({
+          userId: currentUser.id,
+          cart: cart,
+          finalTotal: finalTotal,
+          deliveryId: selectedDeliveryId,
+          paymentId: selectedPaymentId,
+          shippingData: shippingData
+      });
 
-    const productIds = cart.map((item) => item.product_id);
-    const { data: liveProducts, error: fetchError } = await supabase
-      .from('products')
-      .select('id, name, stock_quantity')
-      .in('id', productIds);
-
-    if (fetchError || !liveProducts) {
-      return alert('Błąd połączenia z serwerem. Nie można zweryfikować stanu magazynu.');
-    }
-
-    for (const item of cart) {
-      const liveProd = liveProducts.find((/** @type {any} */ p) => p.id === item.product_id);
-
-      if (!liveProd || liveProd.stock_quantity === 0) {
-        await supabase.from('cart_items').delete().eq('id', item.id);
-        alert(`Niestety, gra "${item.products.name}" została wyprzedana! Usunęliśmy ją z Twojego koszyka.`);
-        loadCart();
-        invalidateAll();
-        return;
+      if (success === true) {
+          selectedDeliveryId = '';
+          selectedPaymentId = '';
+          shippingData = { firstName: '', lastName: '', street: '', postalCode: '', city: '', country: 'Polska', phone: '' };
+          loadCart();
+          invalidateAll();
+      } else if (typeof success === 'object' && success !== null && success.action === 'refresh_cart') {
+          // Teraz TypeScript wie na 100%, że to obiekt i przestanie krzyczeć
+          loadCart();
+          invalidateAll();
       }
-
-      if (liveProd.stock_quantity < item.quantity) {
-        await supabase.from('cart_items').update({ quantity: liveProd.stock_quantity }).eq('id', item.id);
-        alert(
-          `Niestety, ktoś ubiegł Cię z zakupem i zostało tylko ${liveProd.stock_quantity} szt. gry "${item.products.name}"! Zaktualizowaliśmy Twój koszyk.`
-        );
-        loadCart();
-        invalidateAll();
-        return;
-      }
-    }
-
-    const { data: order, error: oErr } = await supabase
-      .from('orders')
-      .insert({
-        user_id: currentUser.id,
-        total_amount: finalTotal,
-        delivery_method_id: selectedDeliveryId,
-        payment_method_id: selectedPaymentId,
-        status: 'paid'
-      })
-      .select()
-      .single();
-
-    if (oErr) return alert('Błąd zamówienia: ' + oErr.message);
-
-    const orderItems = cart.map((item) => ({
-      order_id: order.id,
-      product_id: item.product_id,
-      quantity: item.quantity,
-      // Zapisujemy do faktury/historii promocyjną cenę, by wszystko się zgadzało
-      price_at_time: getActivePrice(item.products)
-    }));
-
-    await supabase.from('order_items').insert(orderItems);
-
-    for (const item of cart) {
-      const liveProd = liveProducts.find((/** @type {any} */ p) => p.id === item.product_id);
-
-      if (liveProd) {
-        await supabase
-          .from('products')
-          .update({ stock_quantity: liveProd.stock_quantity - item.quantity })
-          .eq('id', item.product_id);
-      }
-    }
-
-    await supabase.from('cart_items').delete().eq('user_id', currentUser.id);
-
-    alert('Dziękujemy! Zamówienie zostało złożone.');
-    selectedDeliveryId = '';
-    selectedPaymentId = '';
-    loadCart();
-    invalidateAll();
   }
 </script>
 
+
 <header class="cart-page-header">
   <h1>Twój Koszyk</h1>
-  <a class="back-link" href="/">Wróć do katalogu</a>
+<button class="back-link" onclick={() => window.location.href = '/'}>Wróć do katalogu</button>
 </header>
 
 <main class="cart-page-main">
@@ -181,12 +131,12 @@
   {:else if !currentUser}
     <section class="checkout-section">
       <p>Musisz być zalogowany jako klient, aby zobaczyć koszyk.</p>
-      <a class="back-link inline" href="/">Przejdź do katalogu</a>
+     <button class="back-link" onclick={() => window.location.href = '/'}>Wróć do katalogu</button>
     </section>
   {:else if isAdmin}
     <section class="checkout-section">
       <p>Admin nie korzysta z koszyka.</p>
-      <a class="back-link inline" href="/">Przejdź do katalogu</a>
+      <button class="back-link" onclick={() => window.location.href = '/'}>Wróć do katalogu</button>
     </section>
   {:else}
     <section class="checkout-section">
@@ -238,6 +188,9 @@
       </div>
 
       {#if cart.length > 0}
+        
+        <CheckoutForm bind:shippingData={shippingData} />
+        
         <div class="checkout-controls">
           <div class="delivery-picker">
             <label for="delivery">Dostawa:</label>
@@ -266,7 +219,7 @@
             <h3>Do zapłaty: {finalTotal.toFixed(2)} zł</h3>
           </div>
 
-          <button class="order-btn" onclick={placeOrder}>Zapłać i zamów</button>
+          <button class="order-btn" onclick={handlePlaceOrder}>Zapłać i zamów</button>
         </div>
       {/if}
     </section>
