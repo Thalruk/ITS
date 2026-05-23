@@ -5,6 +5,7 @@
     let { game, onAddToCart, onToggleVisibility, onEdit, onDelete, onClone } = $props();
 
     let quantity = $state(1);
+    let categoryName = $derived(game.categories?.name || game.category_name || '');
 
     /** @param {string} imageFileName */
     function getAbsoluteTexturePath(imageFileName) {
@@ -35,8 +36,8 @@
     
     <div class="title-row">
         <h3>{game.name}</h3>
-        {#if game.category}
-            <span class="category-tag">{game.category}</span>
+        {#if categoryName}
+            <span class="category-tag">{categoryName}</span>
         {/if}
     </div>
     

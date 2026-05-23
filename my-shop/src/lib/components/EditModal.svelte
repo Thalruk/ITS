@@ -2,12 +2,13 @@
     /**
      * @typedef {Object} ModalProps
      * @property {any} product
+     * @property {any[]} categories
      * @property {(updatedProduct: any) => void} onSave
      * @property {() => void} onCancel
      */
 
     /** @type {ModalProps} */
-    let { product, onSave, onCancel } = $props();
+    let { product, categories = [], onSave, onCancel } = $props();
 
     /** @type {any} */
     let localProduct = $state({ ...product });
@@ -44,12 +45,9 @@
         <label for="edit-cat">Rodzaj gry:</label>
         <select id="edit-cat" bind:value={localProduct.category}>
             <option value="">Brak...</option>
-            <option value="RPG">RPG</option>
-            <option value="FPS">FPS</option>
-            <option value="Strategia">Strategia</option>
-            <option value="Sportowa">Sportowa</option>
-            <option value="Horror">Horror</option>
-            <option value="Symulator">Symulator</option>
+            {#each categories as category (category.id)}
+                <option value={category.id}>{category.name}</option>
+            {/each}
         </select>
         
         <label for="edit-stock">Ilość sztuk na magazynie:</label>

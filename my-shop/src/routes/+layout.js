@@ -4,7 +4,8 @@ export async function load() {
     // Pobieramy listę kategorii (gatunków gier) z tabeli 'categories'
     const { data: categories, error } = await supabase
         .from('categories')
-        .select('*');
+        .select('id, name')
+        .order('name', { ascending: true });
 
     if (error) {
         console.error('Błąd podczas pobierania kategorii dla nawigacji:', error);

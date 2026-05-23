@@ -40,12 +40,9 @@
         <input type="text" bind:value={newImg} placeholder="Link do obrazka" />
         <select bind:value={newCat}>
             <option value="">Gatunek...</option>
-            <option value="RPG">RPG</option>
-            <option value="FPS">FPS</option>
-            <option value="Strategia">Strategia</option>
-            <option value="Sportowa">Sportowa</option>
-            <option value="Horror">Horror</option>
-            <option value="Symulator">Symulator</option>
+            {#each data.categories || [] as category (category.id)}
+                <option value={category.id}>{category.name}</option>
+            {/each}
         </select>
 
         <div class="checkbox-group">

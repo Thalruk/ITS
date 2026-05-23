@@ -4,7 +4,7 @@ export async function load() {
     // Zauważ brak .eq('is_featured', true) - pobieramy cały katalog
     const { data: products, error } = await supabase
         .from('products')
-        .select('*');
+        .select('*, categories(name)');
 
     if (error) {
         console.error('Błąd pobierania katalogu gier:', error);

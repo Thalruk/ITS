@@ -18,8 +18,7 @@ export async function load({ locals: { safeGetSession, supabase } }) {
     }
   }
 
-  // Pobieranie produktów bez zmian
-  const { data: products } = await supabase.from('products').select('*');
+  const { data: products } = await supabase.from('products').select('*, categories(name)');
 
   return {
     products: products ?? [],

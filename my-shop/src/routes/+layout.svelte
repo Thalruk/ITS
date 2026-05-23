@@ -71,7 +71,7 @@
     </div>
 </div>
 
-<Navbar cartCount={cartStore.items.length} />
+<Navbar cartCount={cartStore.items.length} categories={data.categories || []} />
 
 <main class="content-wrapper">
     {@render children()}
