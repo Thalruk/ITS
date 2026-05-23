@@ -1,8 +1,27 @@
 <script>
     import { authStore } from '$lib/store.svelte.js';
 
-    /** @type {{ game: any, onAddToCart: Function, onToggleVisibility: Function, onEdit: Function, onDelete: Function, onClone: Function }} */
-    let { game, onAddToCart, onToggleVisibility, onEdit, onDelete, onClone } = $props();
+    /**
+     * @typedef {Object} GameCardProps
+     * @property {any} game
+     * @property {(product: any, qty: number) => void | Promise<void>} onAddToCart
+     * @property {(product: any) => void | Promise<void>} [onToggleVisibility]
+     * @property {(product: any) => void} [onEdit]
+     * @property {(productId: number) => void | Promise<void>} [onDelete]
+     * @property {(product: any) => void | Promise<void>} [onClone]
+     * @property {boolean} [showAdminControls]
+     */
+
+    /** @type {GameCardProps} */
+    let {
+        game,
+        onAddToCart,
+        onToggleVisibility,
+        onEdit,
+        onDelete,
+        onClone,
+        showAdminControls = false
+    } = $props();
 
     let quantity = $state(1);
 
@@ -64,18 +83,18 @@
         {/if}
     {/if}
     
-    {#if authStore.isAdmin}
+    {#if authStore.isAdmin && showAdminControls}
         <div class="admin-controls">
-            <button class="toggle-btn" class:restore={game.is_hidden} onclick={() => onToggleVisibility(game)}>
+            <button class="toggle-btn" class:restore={game.is_hidden} onclick={() => onToggleVisibility?.(game)}>
                 {game.is_hidden ? 'Przywróć widoczność' : 'Ukryj przed klientami'}
             </button>
-            
+
             <div class="action-buttons-row">
-                <button class="edit-btn" onclick={() => onEdit(game)}>Edytuj ✏️</button>
-                <button class="clone-btn" onclick={() => onClone(game)}>Klonuj 🗐</button>
+                <button class="edit-btn" onclick={() => onEdit?.(game)}>Edytuj ✏️</button>
+                <button class="clone-btn" onclick={() => onClone?.(game)}>Klonuj 🗐</button>
             </div>
 
-            <button class="del-btn" onclick={() => onDelete(game.id)}>
+            <button class="del-btn" onclick={() => onDelete?.(game.id)}>
                 Usuń z bazy 🗑️
             </button>
         </div>

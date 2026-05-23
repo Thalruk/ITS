@@ -5,7 +5,8 @@
     import './layout.css'; 
 
     import { supabase } from '$lib/supabaseClient';
-    import { invalidateAll } from '$app/navigation';
+    import { invalidateAll, goto } from '$app/navigation';
+    import { resolve } from '$app/paths';
     import { onMount } from 'svelte';
     import { authStore, cartStore, loadCartGlobal } from '$lib/store.svelte.js';
 
@@ -41,15 +42,41 @@
 
     /** @param {string} email */
     async function loginAs(email) {
-        const { error } = await supabase.auth.signInWithPassword({ email: email, password: 'haslo123' });
-        if (error) alert('Błąd logowania: Upewnij się, że konto istnieje w Supabase!');
-        else location.reload();
+        const { data: loginData, error } = await supabase.auth.signInWithPassword({
+            email,
+            password: 'haslo123'
+        });
+
+        if (error) {
+            alert('Błąd logowania: Upewnij się, że konto istnieje w Supabase!');
+            return;
+        }
+
+        authStore.currentUser = loginData.user;
+        authStore.isAdmin = email === 'admin@sklep.pl';
+
+        if (authStore.isAdmin) {
+            cartStore.items = [];
+            await goto(resolve('/admin'));
+        } else {
+            await loadCartGlobal();
+            await goto(resolve('/zamowienia'));
+        }
+
+        await invalidateAll();
     }
 
     async function logout() {
         await supabase.auth.signOut();
-        location.reload();
+
+        authStore.currentUser = null;
+        authStore.isAdmin = false;
+        cartStore.items = [];
+
+        await goto(resolve('/'));
+        await invalidateAll();
     }
+
 </script>
 
 <div class="dev-bar">
@@ -58,8 +85,9 @@
         {#if authStore.currentUser}
             <small style="margin-left: 10px; opacity: 0.8;">({authStore.currentUser.email})</small>
         {/if}
+        
         <small style="margin-left: 10px; color: #a0aec0;">
-            | Rola z sesji: {data.user?.role || 'Zwykły użytkownik'}
+            | Rola z sesji: {!authStore.currentUser ? 'Brak sesji' : (authStore.isAdmin ? 'Administrator' : 'Zwykły użytkownik')}
         </small>
     </span>
     

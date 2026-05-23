@@ -1,17 +1,11 @@
 <script>
     import { supabase } from '$lib/supabaseClient';
-    import { invalidateAll } from '$app/navigation';
     import { page } from '$app/stores'; 
     import { authStore, loadCartGlobal } from '$lib/store.svelte.js';
     import GameCard from '$lib/components/GameCard.svelte';
-    import AdminPanel from '$lib/components/AdminPanel.svelte';
-    import EditModal from '$lib/components/EditModal.svelte';
 
     /** @type {{ data: any }} */
     let { data } = $props();
-
-    /** @type {any} */
-    let editingProduct = $state(null);
 
     // --- LOGIKA FILTROWANIA PO ADRESIE URL ---
     let currentFilter = $derived($page.url.searchParams.get('filter'));
@@ -29,40 +23,6 @@
         currentFilter === 'uzywane' ? '💿 Gry Używane' :
         '🕹️ Pełny Katalog Gier'
     );
-
-    /** @param {any} gameToEdit */
-    function handleEditProduct(gameToEdit) {
-        editingProduct = gameToEdit;
-    }
-
-    // --- POPRAWIONA LOGIKA KLONOWANIA (Rozwiązanie błędu lowest_price_30d) ---
-    /** @param {any} productToCopy */
-    async function handleCloneProduct(productToCopy) {
-        if (!confirm(`Czy skopiować produkt: ${productToCopy.name}?`)) return;
-
-        const newProductData = {
-            name: productToCopy.name + ' (KOPIA)',
-            description: productToCopy.description,
-            price: productToCopy.price,
-            promo_price: productToCopy.promo_price,
-            image_url: productToCopy.image_url,
-            category: productToCopy.category,
-            stock_quantity: productToCopy.stock_quantity,
-            is_new: productToCopy.is_new,
-            is_used: productToCopy.is_used,
-            // Jeśli oryginalny produkt nie ma ceny 30-dniowej, używamy jego obecnej ceny jako domyślnej
-            lowest_price_30d: productToCopy.lowest_price_30d || productToCopy.price
-        };
-
-        const { error } = await supabase.from('products').insert([newProductData]);
-
-        if (error) {
-            alert('Błąd klonowania: ' + error.message);
-        } else {
-            alert('Pomyślnie sklonowano produkt z uwzględnieniem najniższej ceny!');
-            invalidateAll(); 
-        }
-    }
 
     /** @param {any} product * @param {number} qty */
     async function handleAddToCart(product, qty) {
@@ -85,84 +45,17 @@
         }
     }
 
-    /** @param {any} product */
-    async function handleToggleVisibility(product) {
-        const newStatus = !product.is_hidden;
-        const { error } = await supabase.from('products').update({ is_hidden: newStatus }).eq('id', product.id);
-        if (!error) invalidateAll();
-    }
-
-    /** @param {any} updatedFields */
-    async function handleSaveEdit(updatedFields) {
-        const { error } = await supabase.from('products').update({
-            name: updatedFields.name,
-            description: updatedFields.description,
-            price: parseFloat(updatedFields.price),
-            promo_price: parseFloat(updatedFields.promo_price) || 0,
-            image_url: updatedFields.image_url,
-            category: updatedFields.category,
-            stock_quantity: parseInt(updatedFields.stock_quantity) || 0,
-            is_new: updatedFields.is_new,
-            is_used: updatedFields.is_used,
-            // Zabezpieczenie modyfikacji ceny 30-dniowej przy edycji
-            lowest_price_30d: updatedFields.lowest_price_30d || updatedFields.price
-        }).eq('id', updatedFields.id);
-
-        if (!error) { editingProduct = null; invalidateAll(); }
-    }
-
-    /** @param {number} id */
-    async function handleDeleteProduct(id) {
-        if (!confirm('Czy chcesz usunąć produkt z bazy?')) return;
-        const { error } = await supabase.from('products').delete().eq('id', id);
-        if (!error) invalidateAll();
-    }
-
-    /** @param {any} formFields * @param {Function} callback */
-    async function handleAddProduct(formFields, callback) {
-        const price = parseFloat(formFields.price);
-        const stock = parseInt(formFields.stock_quantity) || 0;
-        if (price < 0 || stock < 0) return alert('Wartości nie mogą być ujemne!');
-
-        const { error } = await supabase.from('products').insert([{
-            name: formFields.name,
-            description: formFields.description,
-            price,
-            stock_quantity: stock,
-            image_url: formFields.image_url || 'https://via.placeholder.com/150',
-            category: formFields.category,
-            is_new: formFields.is_new,
-            is_used: formFields.is_used,
-            promo_price: formFields.promo_price || 0,
-            // Przy dodawaniu nowego produktu cena początkowa jest jednocześnie najniższą ceną z 30 dni
-            lowest_price_30d: price
-        }]);
-
-        if (!error) { callback(); invalidateAll(); } else { alert(error.message); }
-    }
 </script>
-
-{#if editingProduct}
-    <EditModal product={editingProduct} onSave={handleSaveEdit} onCancel={() => editingProduct = null} />
-{/if}
-
-{#if authStore.isAdmin}
-    <AdminPanel {data} onAddProduct={handleAddProduct} />
-{/if}
 
 <section class="catalog">
     <h2>{sectionTitle}</h2>
     
     <div class="grid">
         {#each displayedGames as p (p.id)}
-            {#if !p.is_hidden || authStore.isAdmin}
+            {#if !p.is_hidden}
                 <GameCard 
                     game={p} 
                     onAddToCart={handleAddToCart} 
-                    onToggleVisibility={handleToggleVisibility} 
-                    onEdit={handleEditProduct} 
-                    onClone={handleCloneProduct}
-                    onDelete={handleDeleteProduct} 
                 />
             {/if}
         {:else}

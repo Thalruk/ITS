@@ -28,6 +28,10 @@
     }
 </script>
 
+<svelte:head>
+    <title>Panel klienta</title>
+</svelte:head>
+
 <div class="orders-container">
     <h2>📦 Twoje Zamówienia i Zwroty</h2>
 
