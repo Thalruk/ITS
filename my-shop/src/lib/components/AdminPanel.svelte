@@ -28,7 +28,7 @@
 </script>
 
 <section class="admin-dashboard">
-    <h2>🛠️ Panel Administratora - Dodaj Grę</h2>
+    <h2 class="section-title">🎮 Dodawanie produktu</h2>
     <div class="add-form">
         <input type="text" bind:value={newName} placeholder="Nazwa gry" />
         <input type="text" bind:value={newDesc} placeholder="Opis / Producent" />
@@ -59,7 +59,7 @@
 </section>
 
 <section class="admin-dashboard">
-    <h2>📥 Powiadomienia Admina</h2>
+    <h2 class="section-title">📥 Powiadomienia Admina</h2>
     <div class="admin-grid">
         <div class="tasks">
             <h3>Lista zadań</h3>
@@ -94,4 +94,8 @@
     .task-card, .inquiry-card { background: #2d3748; padding: 10px; margin-bottom: 10px; border-radius: 5px; font-size: 0.9rem; border: 1px solid #4a5568; }
     .order-btn { background: linear-gradient(135deg, #48bb78, #38a169); color: white; font-size: 1rem; font-weight: bold; border: none; border-radius: 8px; padding: 12px 24px; cursor: pointer; box-shadow: 0 4px 6px rgba(72, 187, 120, 0.25); transition: all 0.2s ease-in-out; width: 100%; margin-top: 10px; }
     .order-btn:hover { background: linear-gradient(135deg, #38a169, #2f855a); transform: translateY(-2px); }
+    .section-title {
+    margin: 0 0 16px 0;
+    }
+
 </style>

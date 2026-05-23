@@ -3,10 +3,10 @@
     import { loadOrders, returnOrder } from '$lib/services/orders.js';
     import { authStore } from '$lib/store.svelte.js';
 
-    // NAPRAWA 1: Dodany typ dla tablicy orders
     /** @type {any[]} */
     let orders = $state([]);
     let loading = $state(true);
+    let ordersExpanded = $state(false);
 
     onMount(async () => {
         setTimeout(async () => {
@@ -33,11 +33,21 @@
 </svelte:head>
 
 <div class="orders-container">
-    <h2>📦 Twoje Zamówienia i Zwroty</h2>
+    <h1 class="panel-title">Panel klienta</h1>
+    <button
+        type="button"
+        class="section-toggle"
+        onclick={() => ordersExpanded = !ordersExpanded}
+        aria-expanded={ordersExpanded}
+    >
+        <span>{ordersExpanded ? '▼' : '▶'}</span>
+        <span>📦 Twoje zamówienia i zwroty</span>
+    </button>
 
-    {#if loading}
-        <p class="loading-text">Ładowanie historii zamówień...</p>
-    {:else if !authStore.currentUser}
+    {#if ordersExpanded}
+        {#if loading}
+            <p class="loading-text">Ładowanie historii zamówień...</p>
+        {:else if !authStore.currentUser}
         <div class="empty-state">
             <p>Musisz być zalogowany jako klient, aby zobaczyć swoje zamówienia.</p>
             <button onclick={() => window.location.href = '/'} class="action-btn">Wróć do sklepu</button>
@@ -92,6 +102,7 @@
             {/each}
         </div>
     {/if}
+{/if}
 </div>
 
 
@@ -100,13 +111,6 @@
         max-width: 900px; 
         margin: 40px auto; 
         padding: 20px; 
-    }
-    
-    .orders-container h2 {
-        border-bottom: 2px solid #2d3748;
-        padding-bottom: 15px;
-        margin-bottom: 30px;
-        color: #e2e8f0;
     }
 
     .loading-text, .empty-state {
@@ -180,5 +184,33 @@
         margin-bottom: 20px;
         color: #cbd5e1;
         border: 1px solid #2d3748;
+    }
+
+    .panel-title {
+        margin: 0 0 40px 0;
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #ffffff;
+    }
+
+    .section-toggle {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: transparent;
+        color: #ffffff;
+        border: none;
+        padding: 0 0 16px 0;
+        margin: 0 0 24px 0;
+        border-bottom: 1px solid #334155;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-align: left;
+    }
+
+    .section-toggle:hover {
+        color: #38bdf8;
     }
 </style>

@@ -42,10 +42,13 @@
     .admin-page {
         max-width: 1200px;
         margin: 0 auto;
-        padding: 120px 24px 60px;
+        padding: 40px 24px 60px;
     }
 
     .admin-page h1 {
-        margin-bottom: 32px;
+        margin-bottom: 40px;
+        font-size: 1.2rem;
+        font-weight: 600;
     }
+
 </style>

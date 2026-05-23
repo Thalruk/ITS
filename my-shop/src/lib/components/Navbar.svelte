@@ -39,8 +39,9 @@
 
         <div class="nav-actions">
             
-            <a href={resolve('/koszyk')} class="cart-btn">
-                <img src="https://twojsklep.pl/assets/textures/ui/cart-icon.svg" alt="Koszyk" class="ui-icon" />
+            <a href={resolve('/koszyk')} class="cart-btn" aria-label="Koszyk" title="Koszyk">
+                <span class="nav-emoji">🛒</span>
+
                 {#if cartCount > 0}
                     <span class="cart-badge">{cartCount}</span>
                 {/if}
@@ -52,7 +53,7 @@
                 aria-label={authStore.isAdmin ? 'Panel administratora' : 'Panel klienta'}
                 title={authStore.isAdmin ? 'Panel administratora' : 'Panel klienta'}
             >
-                <span style="font-size: 1.4rem;">{authStore.isAdmin ? '🛠️' : '👤'}</span>
+                <span class="nav-emoji">{authStore.isAdmin ? '🛠️' : '👤'}</span>
             </a>
 
             <button class="mobile-toggle" onclick={toggleMobileMenu}>
@@ -78,10 +79,9 @@
     .nav-actions { display: flex; align-items: center; gap: 1.5rem; }
     .icon-btn, .cart-btn { display: flex; align-items: center; text-decoration: none; position: relative; padding: 0.5rem; border-radius: 8px; }
     .icon-btn:hover, .cart-btn:hover { background-color: rgba(255, 255, 255, 0.1); }
-    .ui-icon { width: 24px; height: 24px; filter: invert(1); }
     .cart-badge { position: absolute; top: 0; right: 0; background-color: #00ffcc; color: #0f0f14; border-radius: 50%; padding: 0.15rem 0.4rem; font-size: 0.75rem; font-weight: bold; transform: translate(25%, -25%); }
     .mobile-toggle { display: none; background: none; border: none; color: #ffffff; font-size: 1.8rem; cursor: pointer; }
-
+    .nav-emoji { font-size: 1.4rem; line-height: 1; }
     @media (max-width: 1100px) {
         .nav-links { display: none; flex-direction: column; position: absolute; top: 100%; left: 0; width: 100%; background-color: #0f0f14; padding: 1rem 0; border-top: 1px solid #2a2a35; }
         .nav-links.mobile-open { display: flex; }
