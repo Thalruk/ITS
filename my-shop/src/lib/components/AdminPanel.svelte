@@ -34,7 +34,7 @@
         <input type="text" bind:value={newDesc} placeholder="Opis / Producent" />
         
         <input type="number" bind:value={newPrice} placeholder="Cena podstawowa (zł)" min="0" step="1.0" />
-        <input type="number" bind:value={promoPrice} placeholder="Cena w promocji (zostaw puste jeśli brak)" min="0" step="1.0" class="promo-input" />
+        <input type="number" bind:value={promoPrice} placeholder="Cena w promocji" min="0" step="1.0" class="promo-input" />
         <input type="number" bind:value={newStock} placeholder="Ilość sztuk (magazyn)" min="0" step="1" />
         
         <input type="text" bind:value={newImg} placeholder="Link do obrazka" />

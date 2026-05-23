@@ -26,11 +26,34 @@ export async function load() {
         .select('*')
         .eq('is_active', true);
 
+    const { data: orders, error: ordersError } = await supabase
+        .from('orders')
+        .select(`
+            id,
+            created_at,
+            total_amount,
+            status,
+            addresses(street, city, postal_code),
+            order_items(
+                id,
+                product_id,
+                quantity,
+                price_at_time,
+                products(name)
+            )
+        `)
+        .order('created_at', { ascending: false });
+
+    if (ordersError) {
+        console.error('Błąd pobierania zamówień w panelu admina:', ordersError.message);
+    }
+
     return {
         products: products ?? [],
         deliveryMethods: delivery ?? [],
         adminTasks: tasks ?? [],
         inquiries: inquiries ?? [],
-        paymentMethods: paymentMethods ?? []
+        paymentMethods: paymentMethods ?? [],
+        orders: orders ?? []
     };
 }

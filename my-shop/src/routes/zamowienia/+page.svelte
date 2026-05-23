@@ -18,7 +18,6 @@
         }, 500);
     });
 
-    // NAPRAWA 2: Dodany typ dla parametru order
     /** @param {any} order */
     async function handleReturn(order) {
         const success = await returnOrder(order);
@@ -67,7 +66,13 @@
                             <span class="order-total">💰 {order.total_amount.toFixed(2)} zł</span>
                         </div>
                         <span class="status-badge {order.status}">
-                            {order.status === 'paid' ? 'Opłacone' : (order.status === 'returned' ? 'Zwrócone' : order.status)}
+                            {order.status === 'paid'
+                                ? 'Opłacone'
+                                : order.status === 'return_requested'
+                                    ? 'Oczekuje na zatwierdzenie zwrotu'
+                                    : order.status === 'returned'
+                                        ? 'Zwrócone'
+                                        : order.status}
                         </span>
                     </div>
                     
@@ -157,6 +162,7 @@
         letter-spacing: 0.5px;
     }
     .status-badge.paid { background: rgba(72, 187, 120, 0.2); color: #48bb78; border: 1px solid #48bb78; }
+    .status-badge.return_requested { background: rgba(237, 137, 54, 0.2); color: #f6ad55; border: 1px solid #f6ad55; }
     .status-badge.returned { background: rgba(229, 62, 62, 0.2); color: #fc8181; border: 1px solid #fc8181; }
 
     .order-items h4 { margin: 0 0 10px 0; color: #a0aec0; font-size: 0.9rem; text-transform: uppercase; }

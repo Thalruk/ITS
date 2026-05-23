@@ -23,38 +23,26 @@ export async function loadOrders(userId) {
  * Obsługuje zwrot zamówienia i aktualizację magazynu.
  * @param {any} order
  */
-export async function returnOrder(order) {
-    if (!confirm(`Czy na pewno chcesz zwrócić zamówienie?`)) return false;
 
-    const { error: statusError } = await supabase
+/**
+ * Zgłasza prośbę o zwrot zamówienia.
+ * Zwrot musi zostać zatwierdzony przez administratora.
+ * @param {any} order
+ */
+export async function returnOrder(order) {
+    if (!confirm('Czy na pewno chcesz zgłosić zwrot tego zamówienia?')) return false;
+
+    const { error } = await supabase
         .from('orders')
-        .update({ status: 'returned' })
+        .update({ status: 'return_requested' })
         .eq('id', order.id);
 
-    if (statusError) {
-        alert("Błąd statusu: " + statusError.message);
+    if (error) {
+        alert('Błąd zgłaszania zwrotu: ' + error.message);
         return false;
     }
 
-    /** @type {any} */
-    for (const item of order.order_items) {
-        if (!item.product_id) continue;
-
-        const { data: prod } = await supabase
-            .from('products')
-            .select('stock_quantity')
-            .eq('id', item.product_id)
-            .single();
-
-        if (prod) {
-            await supabase
-                .from('products')
-                .update({ stock_quantity: prod.stock_quantity + item.quantity })
-                .eq('id', item.product_id);
-        }
-    }
-
-    alert('Zamówienie zwrócone poprawnie!');
+    alert('Zgłoszenie zwrotu zostało wysłane do administratora.');
     return true;
 }
 

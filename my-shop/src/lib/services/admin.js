@@ -110,3 +110,79 @@ export async function addProduct(productData) {
       return true;
     }
 }
+
+/**
+ * Zatwierdza zwrot zamówienia i przywraca produkty do magazynu.
+ * @param {any} order
+ */
+export async function approveReturn(order) {
+    if (!confirm('Czy na pewno chcesz zatwierdzić ten zwrot?')) return false;
+
+    for (const item of order.order_items) {
+        if (!item.product_id) continue;
+
+        const { data: product, error: productError } = await supabase
+            .from('products')
+            .select('stock_quantity')
+            .eq('id', item.product_id)
+            .single();
+
+        if (productError || !product) {
+            alert('Błąd pobierania produktu: ' + (productError?.message || 'Nie znaleziono produktu'));
+            return false;
+        }
+
+        const newStockQuantity = Number(product.stock_quantity || 0) + Number(item.quantity || 0);
+
+        const { data: updatedProduct, error: stockError } = await supabase
+            .from('products')
+            .update({
+                stock_quantity: newStockQuantity
+            })
+            .eq('id', item.product_id)
+            .select('id, name, stock_quantity')
+            .single();
+
+        if (stockError || !updatedProduct) {
+            alert('Błąd aktualizacji magazynu: ' + (stockError?.message || 'Produkt nie został zaktualizowany'));
+            return false;
+        }
+    }
+
+    const { error: statusError } = await supabase
+        .from('orders')
+        .update({ status: 'returned' })
+        .eq('id', order.id);
+
+    if (statusError) {
+        alert('Błąd zatwierdzania zwrotu: ' + statusError.message);
+        return false;
+    }
+
+    alert('Zwrot został zatwierdzony.');
+    invalidateAll();
+    return true;
+}
+
+/**
+ * Odrzuca zgłoszenie zwrotu zamówienia.
+ * Zamówienie wraca do statusu opłaconego, a magazyn nie jest zmieniany.
+ * @param {any} order
+ */
+export async function rejectReturn(order) {
+    if (!confirm('Czy na pewno chcesz odrzucić ten zwrot?')) return false;
+
+    const { error } = await supabase
+        .from('orders')
+        .update({ status: 'paid' })
+        .eq('id', order.id);
+
+    if (error) {
+        alert('Błąd odrzucania zwrotu: ' + error.message);
+        return false;
+    }
+
+    alert('Zwrot został odrzucony.');
+    invalidateAll();
+    return true;
+}
