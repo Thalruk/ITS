@@ -6,23 +6,13 @@
     let { data } = $props();
     let product = data.product; 
 
-    // 2. LOGIKA KOSZYKA I KONTA
+    // 2. LOGIKA KONTA I KOSZYKA
     let currentUser = $state(null);
-    let cartCount = $state(0);
 
     onMount(async () => {
         const { data: { session } } = await supabase.auth.getSession();
         currentUser = session?.user || null;
-        if (currentUser) loadCartCount();
     });
-
-    async function loadCartCount() {
-        const { data: c } = await supabase
-            .from('cart_items')
-            .select('id')
-            .eq('user_id', currentUser.id);
-        cartCount = c?.length || 0;
-    }
 
     async function addToCart() {
         if (!product) return;
@@ -36,7 +26,7 @@
         if (error) {
             alert(error.code === '23505' ? 'Gra jest już w koszyku!' : error.message);
         } else {
-            cartCount += 1;
+            // Zakładamy, że główny layout (z globalnym navbarem) sam obsłuży aktualizację licznika w navbarze
             alert(`Dodano do koszyka: ${product.name}!`);
         }
     }
@@ -50,17 +40,6 @@
 </script>
 
 <div class="page-wrapper">
-    <header class="navbar">
-        <div class="container nav-content">
-            <div class="logo">GamerShop <span>Pro</span></div>
-            <div class="cart-section">
-                <div class="cart-icon">
-                    🛒 <span class="cart-badge">{cartCount}</span>
-                </div>
-            </div>
-        </div>
-    </header>
-
     <main class="container main-content">
         {#if product}
             <section class="product-hero">
@@ -152,62 +131,19 @@
             </div>
         {/if}
     </main>
-
-    <footer class="main-footer">
-        <div class="container footer-grid">
-            <div class="footer-col">
-                <h4>O sklepie</h4>
-                <ul><li>Regulamin sklepu</li><li>Polityka prywatności</li><li>Kontakt</li></ul>
-            </div>
-            <div class="footer-col">
-                <h4>Wsparcie</h4>
-                <ul><li>FAQ</li><li>Reklamacje i zwroty</li><li>Jak aktywować gry?</li></ul>
-            </div>
-        </div>
-        <div class="footer-bottom">
-            <p>&copy; 2026 GamerShop Pro - Cyfrowa rozgrywka. Wszelkie prawa zastrzeżone.</p>
-        </div>
-    </footer>
 </div>
 
 <style>
-    /* BAZA ZGODNA ZE STRONĄ GŁÓWNĄ */
-    :global(body) { 
-        margin: 0; 
-        padding: 0; 
-        background-color: #0f0f14; /* Zmieniono z #0b0b0f na tło ze strony głównej */
+    /* BAZA ZGODNA ZE STRONĄ GŁÓWNĄ - Przywrócono Ciemne Tło */
+    .page-wrapper {
+        background-color: #0f0f14; /* Ciemny Cyberpunkowy mrok powrócił! */
+        min-height: 100vh;         /* Upewniamy się, że tło wypełnia cały ekran */
         color: #ffffff; 
         font-family: 'Inter', sans-serif; 
     }
     
     .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
     .main-content { padding-top: 40px; }
-
-    /* NAVBAR */
-    .navbar { 
-        height: 80px; 
-        background: rgba(15, 15, 20, 0.95); 
-        border-bottom: 1px solid #2a2a35; 
-        position: sticky; 
-        top: 0; 
-        z-index: 100; 
-        display: flex; 
-        align-items: center; 
-    }
-    .nav-content { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-    
-    /* LOGO ZGODNE Z MOTYWEM */
-    .logo { font-size: 1.8rem; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
-    .logo span { color: #00ffcc; } /* Zmieniono na akcent cyan */
-    
-    .cart-badge { 
-        background: #00ffcc; 
-        color: #0f0f14; 
-        font-weight: bold;
-        padding: 2px 6px; 
-        border-radius: 4px; 
-        font-size: 0.8rem; 
-    }
 
     /* HERO */
     .product-hero { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; padding-bottom: 60px; }
@@ -243,7 +179,7 @@
     
     .old-price { text-decoration: line-through; color: #666; font-size: 1.2rem; margin-bottom: 5px; }
     .current { font-size: 3rem; font-weight: 900; color: #00ffcc; line-height: 1; margin-bottom: 8px; }
-    .current.promo-color { color: #ff3366; } /* Jeśli promocja, zmień na różowy z motywu */
+    .current.promo-color { color: #ff3366; }
     
     .omnibus { display: block; font-size: 0.85rem; color: #666; margin-top: 5px; }
 
@@ -279,7 +215,7 @@
         color: #ffffff; 
         margin-top: 0; 
         margin-bottom: 1.5rem; 
-        border-left: 4px solid #00ffcc; /* Kreska z motywu strony głównej */
+        border-left: 4px solid #00ffcc; /* Neonowa kreska z motywu strony głównej */
         padding-left: 15px; 
         text-transform: uppercase; 
     }
@@ -298,20 +234,11 @@
     
     .activation-steps { margin: 0; padding-left: 20px; }
     .activation-steps li { margin-bottom: 15px; }
-    .activation-steps strong { color: #00ffcc; } /* Oznaczanie platformy kolorem cyjanu */
+    .activation-steps strong { color: #00ffcc; } 
 
     /* BŁĄD 404 */
     .error-view { text-align: center; padding: 100px 0; color: #ff3366; }
     .error-view .cta-button { width: auto; margin-top: 30px; }
-
-    /* FOOTER (Ciemniejszy od kart) */
-    .main-footer { background: #0f0f14; padding: 60px 0 20px 0; border-top: 1px solid #2a2a35; }
-    .footer-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 40px; margin-bottom: 40px; }
-    .footer-col h4 { text-transform: uppercase; border-left: 3px solid #00ffcc; padding-left: 10px; margin-bottom: 20px; }
-    .footer-col ul { list-style: none; padding: 0; margin: 0; }
-    .footer-col li { color: #b3b3b3; margin-bottom: 10px; cursor: pointer; transition: color 0.2s; }
-    .footer-col li:hover { color: #00ffcc; }
-    .footer-bottom { text-align: center; border-top: 1px solid #1a1a24; padding-top: 20px; color: #666; font-size: 0.8rem; }
 
     /* Responsywność */
     @media (max-width: 768px) {
