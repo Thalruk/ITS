@@ -10,10 +10,28 @@
     let { product, onSave, onCancel } = $props();
 
     /** @type {any} */
-    let localProduct = $derived({ ...product });
+    let localProduct = $derived({
+        ...product,
+        category: product.category === null || product.category === undefined ? '' : String(product.category)
+    });
+
+    /** @type {File | null} */
+    let editImageFile = $state(null);
+
+    /** @type {HTMLInputElement | null} */
+    let editImageFileInput = $state(null);
+
+    /** @param {Event} event */
+    function handleEditImageFileChange(event) {
+        const input = /** @type {HTMLInputElement} */ (event.target);
+        editImageFile = input.files?.[0] || null;
+    }
 
     function handleSaveClick() {
-        onSave(localProduct);
+        onSave({
+            ...localProduct,
+            image_file: editImageFile
+        });
     }
 </script>
 
@@ -37,20 +55,38 @@
                 <input id="edit-promo" type="number" bind:value={localProduct.promo_price} />
             </div>
         </div>
-        
-        <label for="edit-img">Link do obrazka:</label>
-        <input id="edit-img" type="text" bind:value={localProduct.image_url} />
+
+        <span class="field-label">Obraz produktu:</span>
+
+        <div class="file-picker">
+            <input
+                bind:this={editImageFileInput}
+                id="edit-image-file"
+                class="file-input"
+                type="file"
+                accept="image/*"
+                onchange={handleEditImageFileChange}
+            />
+
+            <label for="edit-image-file" class="file-picker-button">
+                📁 {editImageFile ? 'Zmień obraz' : 'Wybierz nowy obraz'}
+            </label>
+
+            <span class="file-picker-name">
+                {editImageFile ? `(${editImageFile.name})` : '(aktualny obraz)'}
+            </span>
+        </div>
 
         <label for="edit-cat">Rodzaj gry:</label>
         <select id="edit-cat" bind:value={localProduct.category}>
             <option value="">Brak...</option>
-            <option value="RPG">RPG</option>
-            <option value="FPS">FPS</option>
-            <option value="Strategia">Strategia</option>
-            <option value="Sportowa">Sportowa</option>
-            <option value="Horror">Horror</option>
-            <option value="Symulator">Symulator</option>
-            <option value="Akcja/Przygoda">Akcja/Przygoda</option>
+            <option value="1">Horror</option>
+            <option value="2">FPS</option>
+            <option value="3">Sportowa</option>
+            <option value="4">Symulator</option>
+            <option value="5">RPG</option>
+            <option value="6">Strategia</option>
+            <option value="7">Akcja/Przygoda</option>
         </select>
         
         <label for="edit-stock">Ilość sztuk na magazynie:</label>
@@ -83,4 +119,51 @@
     .cancel-btn:hover { background: #2d3748; }
     .order-btn { background: linear-gradient(135deg, #48bb78, #38a169); color: white; font-size: 1rem; font-weight: bold; border: none; border-radius: 8px; padding: 12px 24px; cursor: pointer; flex: 2; transition: transform 0.2s ease, box-shadow 0.2s ease; }
     .order-btn:hover { background: linear-gradient(135deg, #38a169, #2f855a); transform: translateY(-2px); box-shadow: 0 4px 8px rgba(72, 187, 120, 0.3); }
+    .file-picker {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #2d3748;
+    border: 1px solid #4a5568;
+    border-radius: 8px;
+    padding: 0.75rem;
+    color: #cbd5e0;
+    margin-bottom: 5px;
+    }
+
+    .file-input {
+        display: none;
+    }
+
+    .file-picker-button {
+        background: #4a5568;
+        color: #ffffff;
+        border-radius: 6px;
+        padding: 8px 14px;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background 0.2s ease;
+        margin-top: 0;
+    }
+
+    .file-picker-button:hover {
+        background: #5a6678;
+    }
+
+    .file-picker-name {
+        color: #a0aec0;
+        font-size: 0.95rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .field-label {
+        display: block;
+        margin-top: 12px;
+        margin-bottom: 6px;
+        color: #cbd5e0;
+    }
+
 </style>

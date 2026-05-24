@@ -133,9 +133,26 @@
         font-weight: bold; 
     }
     
-    .dev-buttons button:hover { background: #35ba1e; }
-    .dev-buttons .admin-btn { background: #b12828; }
-    .dev-buttons .logout-btn { background: #475569; color: white; }
+    .dev-buttons button:hover {
+        background: #35ba1e;
+    }
+
+    .dev-buttons .admin-btn {
+        background: #b12828;
+    }
+
+    .dev-buttons .admin-btn:hover {
+        background: #dc2626;
+    }
+
+    .dev-buttons .logout-btn {
+        background: #475569;
+        color: white;
+    }
+
+    .dev-buttons .logout-btn:hover {
+        background: #64748b;
+    }
     
     .content-wrapper { 
         min-height: calc(100vh - 120px); 

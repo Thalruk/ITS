@@ -25,6 +25,33 @@ export async function toggleVisibility(product) {
 }
 
 /**
+ * Wysyła obraz produktu do Supabase Storage i zwraca publiczny adres pliku.
+ * @param {File | null | undefined} imageFile
+ */
+async function uploadProductImage(imageFile) {
+    if (!imageFile) {
+        return 'https://via.placeholder.com/150';
+    }
+
+    const fileExtension = imageFile.name.split('.').pop();
+    const fileName = `${Date.now()}-${crypto.randomUUID()}.${fileExtension}`;
+
+    const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(fileName, imageFile);
+
+    if (uploadError) {
+        throw new Error('Błąd wysyłania obrazu: ' + uploadError.message);
+    }
+
+    const { data } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(fileName);
+
+    return data.publicUrl;
+}
+
+/**
  * Zapisuje zmiany w edytowanym produkcie.
  * @param {any} editingProduct - Obiekt edytowanego produktu
  */
@@ -34,26 +61,46 @@ export async function saveEdit(editingProduct) {
         return false;
     }
 
+    const parsedPrice = parseFloat(editingProduct.price);
+    const parsedStock = parseInt(editingProduct.stock_quantity) || 0;
+
+    if (parsedPrice < 0 || parsedStock < 0) {
+        alert('Błąd: Cena oraz ilość sztuk nie mogą być ujemne!');
+        return false;
+    }
+
+    let imageUrl = editingProduct.image_url;
+
+    if (editingProduct.image_file) {
+        try {
+            imageUrl = await uploadProductImage(editingProduct.image_file);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Nieznany błąd wysyłania obrazu';
+            alert(message);
+            return false;
+        }
+    }
+
     const { error } = await supabase
         .from('products')
         .update({
             name: editingProduct.name,
             description: editingProduct.description,
-            price: parseFloat(editingProduct.price),
-            image_url: editingProduct.image_url,
-            category: editingProduct.category,
-            stock_quantity: parseInt(editingProduct.stock_quantity) || 0
+            price: parsedPrice,
+            image_url: imageUrl,
+            category: editingProduct.category ? Number(editingProduct.category) : null,
+            stock_quantity: parsedStock
         })
         .eq('id', editingProduct.id);
 
     if (error) {
         alert('Błąd aktualizacji: ' + error.message);
         return false;
-    } else {
-        alert('Zapisano zmiany!');
-        invalidateAll();
-        return true;
     }
+
+    alert('Zapisano zmiany!');
+    invalidateAll();
+    return true;
 }
 
 /**
@@ -76,6 +123,59 @@ export async function deleteProduct(productId) {
 }
 
 /**
+ * Tworzy kopię istniejącego produktu.
+ * Kopia jest domyślnie ukryta, żeby klient nie widział jej przed edycją.
+ * @param {any} product
+ */
+export async function cloneProduct(product) {
+    if (!confirm('Czy na pewno chcesz sklonować ten produkt?')) return false;
+
+    const baseName = product.name.replace(/\s-\skopia\s\d+$/i, '').replace(/\s-\skopia$/i, '');
+
+    const { data: existingCopies, error: fetchError } = await supabase
+        .from('products')
+        .select('name')
+        .ilike('name', `${baseName} - kopia%`);
+
+    if (fetchError) {
+        alert('Błąd sprawdzania istniejących kopii: ' + fetchError.message);
+        return false;
+    }
+
+    const copyNumbers = (existingCopies || [])
+        .map((copy) => {
+            const match = copy.name.match(new RegExp(`^${baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} - kopia (\\d+)$`, 'i'));
+            return match ? Number(match[1]) : 0;
+        });
+
+    const nextCopyNumber = copyNumbers.length > 0 ? Math.max(...copyNumbers) + 1 : 1;
+    const clonedName = `${baseName} - kopia ${nextCopyNumber}`;
+
+    const { error } = await supabase.from('products').insert([{
+        name: clonedName,
+        description: product.description,
+        price: product.price,
+        lowest_price_30d: product.lowest_price_30d ?? product.price,
+        promo_price: product.promo_price ?? 0,
+        stock_quantity: product.stock_quantity,
+        image_url: product.image_url,
+        category: product.category,
+        is_new: product.is_new ?? false,
+        is_used: product.is_used ?? false,
+        is_hidden: true
+    }]);
+
+    if (error) {
+        alert('Błąd klonowania produktu: ' + error.message);
+        return false;
+    }
+
+    alert(`Produkt został sklonowany.`);
+    invalidateAll();
+    return true;
+}
+
+/**
  * Dodaje nowy produkt do bazy.
  * @param {any} productData - Obiekt z danymi nowego produktu
  */
@@ -85,30 +185,48 @@ export async function addProduct(productData) {
         return false;
     }
 
+    if (!productData.newCat) {
+        alert('Wybierz gatunek gry!');
+        return false;
+    }
+
     const parsedPrice = parseFloat(productData.newPrice);
     const parsedStock = parseInt(productData.newStock) || 0;
 
     if (parsedPrice < 0 || parsedStock < 0) {
-      alert('Błąd: Cena oraz ilość sztuk nie mogą być ujemne!');
-      return false;
+        alert('Błąd: Cena oraz ilość sztuk nie mogą być ujemne!');
+        return false;
     }
 
-    const { error } = await supabase.from('products').insert([{ 
-      name: productData.newName, 
-      description: productData.newDesc, 
-      price: parsedPrice, 
-      stock_quantity: parsedStock, 
-      image_url: productData.newImg || 'https://via.placeholder.com/150', 
-      category: productData.newCat 
+    let imageUrl;
+
+    try {
+        imageUrl = await uploadProductImage(productData.newImageFile);
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Nieznany błąd wysyłania obrazu';
+        alert(message);
+        return false;
+    }
+
+    const { error } = await supabase.from('products').insert([{
+        name: productData.newName,
+        description: productData.newDesc,
+        price: parsedPrice,
+        lowest_price_30d: parsedPrice,
+        stock_quantity: parsedStock,
+        image_url: imageUrl,
+        category: productData.newCat ? Number(productData.newCat) : null
     }]);
 
     if (error) {
-      alert('Błąd dodawania: ' + error.message);
-      return false;
-    } else {
-      invalidateAll();
-      return true;
+        alert('Błąd dodawania: ' + error.message);
+        return false;
     }
+
+    alert('Produkt został dodany.');
+
+    invalidateAll();
+    return true;
 }
 
 /**

@@ -18,7 +18,7 @@
             newDesc: productData.description,
             newPrice: productData.price,
             newStock: productData.stock_quantity,
-            newImg: productData.image_url,
+            newImageFile: productData.image_file,
             newCat: productData.category
         });
 

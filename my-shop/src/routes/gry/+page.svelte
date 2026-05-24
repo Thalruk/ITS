@@ -3,9 +3,43 @@
     import { page } from '$app/stores'; 
     import { authStore, loadCartGlobal } from '$lib/store.svelte.js';
     import GameCard from '$lib/components/GameCard.svelte';
+    import EditModal from '$lib/components/EditModal.svelte';
+    import { saveEdit, deleteProduct, toggleVisibility, cloneProduct } from '$lib/services/admin.js';
 
     /** @type {{ data: any }} */
     let { data } = $props();
+
+    /** @type {any} */
+    let editingProduct = $state(null);
+
+    /** @param {any} product */
+    function handleEditProduct(product) {
+        editingProduct = product;
+    }
+
+    /** @param {any} product */
+    async function handleSaveEdit(product) {
+        const success = await saveEdit(product);
+
+        if (success) {
+            editingProduct = null;
+        }
+    }
+
+    /** @param {any} product */
+    async function handleToggleVisibility(product) {
+        await toggleVisibility(product);
+    }
+
+    /** @param {any} productId */
+    async function handleDeleteProduct(productId) {
+        await deleteProduct(productId);
+    }
+
+    /** @param {any} product */
+    async function handleCloneProduct(product) {
+        await cloneProduct(product);
+    }
 
     // --- LOGIKA FILTROWANIA PO ADRESIE URL ---
     let currentFilter = $derived($page.url.searchParams.get('filter'));
@@ -52,10 +86,15 @@
     
     <div class="grid">
         {#each displayedGames as p (p.id)}
-            {#if !p.is_hidden}
-                <GameCard 
-                    game={p} 
-                    onAddToCart={handleAddToCart} 
+            {#if !p.is_hidden || authStore.isAdmin}
+                <GameCard
+                    game={p}
+                    onAddToCart={handleAddToCart}
+                    onToggleVisibility={handleToggleVisibility}
+                    onEdit={handleEditProduct}
+                    onDelete={handleDeleteProduct}
+                    showAdminControls={authStore.isAdmin}
+                    onClone={handleCloneProduct}
                 />
             {/if}
         {:else}
@@ -72,3 +111,11 @@
     .catalog h2 { font-size: 2rem; border-bottom: 2px solid #3182ce; padding-bottom: 10px; margin-bottom: 25px; }
     .empty-state { grid-column: 1 / -1; padding: 40px; text-align: center; background: #1a202c; border: 1px dashed #4a5568; border-radius: 8px; color: #a0aec0; font-size: 1.1rem; }
 </style>
+
+{#if editingProduct}
+    <EditModal
+        product={editingProduct}
+        onSave={handleSaveEdit}
+        onCancel={() => editingProduct = null}
+    />
+{/if}
