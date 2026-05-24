@@ -1,5 +1,4 @@
 <script>
-    import { onMount } from 'svelte';
     import { loadOrders, returnOrder } from '$lib/services/orders.js';
     import { authStore } from '$lib/store.svelte.js';
 
@@ -8,20 +7,37 @@
     let loading = $state(true);
     let ordersExpanded = $state(false);
 
-    onMount(async () => {
-        setTimeout(async () => {
-            if (authStore.currentUser) {
-                orders = await loadOrders(authStore.currentUser.id);
-                console.log("Pobrane zamówienia z bazy:", orders); // <--- DODAJ TĘ LINIJKĘ
-            }
+    /** @type {string | null} */
+    let loadedUserId = $state(null);
+
+    $effect(() => {
+        const userId = authStore.currentUser?.id || null;
+
+        if (!userId) {
+            orders = [];
+            loadedUserId = null;
             loading = false;
-        }, 500);
+            return;
+        }
+
+        if (loadedUserId === userId) return;
+
+        loadedUserId = userId;
+        loading = true;
+
+        loadOrders(userId).then((loadedOrders) => {
+            if (loadedUserId === userId) {
+                orders = loadedOrders;
+                loading = false;
+            }
+        });
     });
 
     /** @param {any} order */
     async function handleReturn(order) {
         const success = await returnOrder(order);
-        if (success) {
+
+        if (success && authStore.currentUser) {
             orders = await loadOrders(authStore.currentUser.id);
         }
     }
