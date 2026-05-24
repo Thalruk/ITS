@@ -19,4 +19,3 @@
 	</form>
 	<a href="/logowanie" class="mt-4 block text-sm underline">Masz już konto? Zaloguj się</a>
 </div>
-<pre>{JSON.stringify(form, null, 2)}</pre>
