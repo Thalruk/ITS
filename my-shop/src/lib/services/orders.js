@@ -7,7 +7,8 @@ import { supabase } from '$lib/supabaseClient';
 export async function loadOrders(userId) {
     const { data: orders, error } = await supabase
         .from('orders')
-        .select('id, created_at, total_amount, status, order_items(id, product_id, quantity, price_at_time, products(name))')
+        // TUTAJ JEST POPRAWKA: POBIERAMY ADRESY!
+        .select('id, created_at, total_amount, status, addresses(street, city, postal_code), order_items(id, product_id, quantity, price_at_time, products(name))')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
@@ -22,54 +23,72 @@ export async function loadOrders(userId) {
  * Obsługuje zwrot zamówienia i aktualizację magazynu.
  * @param {any} order
  */
-export async function returnOrder(order) {
-    if (!confirm(`Czy na pewno chcesz zwrócić zamówienie?`)) return false;
 
-    const { error: statusError } = await supabase
+/**
+ * Zgłasza prośbę o zwrot zamówienia.
+ * Zwrot musi zostać zatwierdzony przez administratora.
+ * @param {any} order
+ */
+export async function returnOrder(order) {
+    if (!confirm('Czy na pewno chcesz zgłosić zwrot tego zamówienia?')) return false;
+
+    const { error } = await supabase
         .from('orders')
-        .update({ status: 'returned' })
+        .update({ status: 'return_requested' })
         .eq('id', order.id);
 
-    if (statusError) {
-        alert("Błąd statusu: " + statusError.message);
+    if (error) {
+        alert('Błąd zgłaszania zwrotu: ' + error.message);
         return false;
     }
 
-    /** @type {any} */
-    for (const item of order.order_items) {
-        if (!item.product_id) continue;
-
-        const { data: prod } = await supabase
-            .from('products')
-            .select('stock_quantity')
-            .eq('id', item.product_id)
-            .single();
-
-        if (prod) {
-            await supabase
-                .from('products')
-                .update({ stock_quantity: prod.stock_quantity + item.quantity })
-                .eq('id', item.product_id);
-        }
-    }
-
-    alert('Zamówienie zwrócone poprawnie!');
+    alert('Zgłoszenie zwrotu zostało wysłane do administratora.');
     return true;
 }
 
 /**
  * Główna funkcja składania zamówienia.
- * @param {{userId: any, cart: any[], finalTotal: number, deliveryId: any, paymentId: any}} params
+ * @param {{userId: any, cart: any[], finalTotal: number, deliveryId: any, paymentId: any, shippingData: any, isPaczkomat: boolean}} params
  */
-export async function placeOrder({ userId, cart, finalTotal, deliveryId, paymentId }) {
-    if (!deliveryId) return alert('Wybierz metodę dostawy!');
-    if (!paymentId) return alert('Wybierz metodę płatności!');
+export async function placeOrder({ userId, cart, finalTotal, deliveryId, paymentId, shippingData, isPaczkomat }) {
+    if (!deliveryId) { alert('Wybierz metodę dostawy!'); return false; }
+    if (!paymentId) { alert('Wybierz metodę płatności!'); return false; }
     
+    // 1. ZBUDOWANIE OSTATECZNEGO ADRESU (KLEJENIE DANYCH)
+    let finalStreet = '';
+
+    if (isPaczkomat) {
+        if (!shippingData.paczkomatId || !shippingData.phone) {
+            alert('Dla przesyłki InPost wymagany jest Kod Paczkomatu oraz Numer Telefonu!');
+            return false;
+        }
+        finalStreet = `Paczkomat: ${shippingData.paczkomatId}`;
+    } else {
+        if (!shippingData.streetName || !shippingData.buildingNumber) {
+            alert('Proszę podać ulicę i numer budynku!');
+            return false;
+        }
+        // Sklejamy ulicę: "Sezamkowa 15" lub "Sezamkowa 15/2"
+        finalStreet = `${shippingData.streetName} ${shippingData.buildingNumber}`;
+        if (shippingData.apartmentNumber) {
+            finalStreet += `/${shippingData.apartmentNumber}`;
+        }
+    }
+
+    // 2. PODSTAWOWA WALIDACJA RESZTY FORMULARZA
+    if (!shippingData.firstName || !shippingData.lastName || !shippingData.city || !shippingData.postalCode) {
+        alert('Proszę wypełnić wszystkie wymagane dane (Imię, Nazwisko, Miasto, Kod pocztowy)!');
+        return false;
+    }
+    
+    // --- BRAMKA BEZPIECZEŃSTWA MAGAZYNU ---
     const productIds = cart.map((/** @type {any} */ item) => item.product_id);
     const { data: liveProducts, error: fetchError } = await supabase
       .from('products')
       .select('id, name, stock_quantity')
       .in('id', productIds);
+
+    
 
     if (fetchError || !liveProducts) {
       alert('Błąd połączenia z serwerem.');
@@ -90,12 +109,36 @@ export async function placeOrder({ userId, cart, finalTotal, deliveryId, payment
       }
     }
 
+    // 1. ZAPISZ IMIĘ I NAZWISKO DO PROFILU 
+    if (shippingData.firstName && shippingData.lastName) {
+        await supabase.from('profiles').update({
+            first_name: shippingData.firstName,
+            last_name: shippingData.lastName
+        }).eq('id', userId);
+    }
+
+    // 2. ZAPIS ADRESU DO TABELI 'addresses'
+   const { data: addressData, error: addrErr } = await supabase.from('addresses').insert({
+        user_id: userId,
+        street: finalStreet, // <--- TUTAJ UŻYWAMY NASZEJ SKLEJONEJ ZMIENNEJ!
+        city: shippingData.city,
+        postal_code: shippingData.postalCode,
+        country: shippingData.country || 'Polska',
+        is_default: true
+    }).select().single();
+    if (addrErr) {
+        alert("Błąd zapisu adresu: " + addrErr.message);
+        return false;
+    }
+
+    // 3. TWORZENIE ZAMÓWIENIA Z PODPIĘTYM ADRESEM
     const { data: order, error: oErr } = await supabase.from('orders').insert({
       user_id: userId, 
       total_amount: finalTotal, 
       delivery_method_id: deliveryId, 
       payment_method_id: paymentId,
-      status: 'paid'
+      status: 'paid',
+      address_id: addressData.id // ŁĄCZYMY ZAMÓWIENIE Z NOWYM ADRESEM!
     }).select().single();
 
     if (oErr) {
@@ -103,6 +146,7 @@ export async function placeOrder({ userId, cart, finalTotal, deliveryId, payment
         return false;
     }
 
+    // 4. Skopiowanie do order_items
     const orderItems = cart.map((/** @type {any} */ item) => ({
       order_id: order.id, 
       product_id: item.product_id, 
@@ -111,6 +155,7 @@ export async function placeOrder({ userId, cart, finalTotal, deliveryId, payment
     }));
     await supabase.from('order_items').insert(orderItems);
 
+    // 5. Odjęcie z magazynu
     /** @type {any} */
     for (const item of cart) {
       const liveProd = liveProducts.find((/** @type {any} */ p) => p.id === item.product_id);
@@ -122,8 +167,9 @@ export async function placeOrder({ userId, cart, finalTotal, deliveryId, payment
       }
     }
 
+    // 6. Czyszczenie koszyka
     await supabase.from('cart_items').delete().eq('user_id', userId);
 
-    alert('Dziękujemy! Zamówienie zostało złożone.');
+    alert('Dziękujemy! Zamówienie zostało złożone pomyślnie.');
     return true;
 }

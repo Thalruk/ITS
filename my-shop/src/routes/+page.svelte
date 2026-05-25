@@ -1,4 +1,5 @@
 <script>
+    import { resolve } from '$app/paths';
     import './page.css'; 
 
     /** @type {{ data: any }} */
@@ -25,7 +26,7 @@
             <h1>GamerShop Pro </h1>
             <p>Witaj w sercu cyfrowej rozgrywki. Przeglądaj unikalne zestawienia nowości, gier używanych oraz niesamowitych wyprzedaży cenowych.</p>
             <div class="hero-actions">
-                <a href="/gry" class="cta-button primary">Otwórz Pełny Katalog</a>
+                <a href={resolve('/gry')} class="cta-button primary">Otwórz Pełny Katalog</a>
             </div>
         </div>
     </section>
@@ -39,8 +40,8 @@
             {:else}
                 <div class="marquee-container">
                     <div class="marquee-track">
-                        {#each Array(10).fill(newGames).flat() as game}
-                            <a href="/gry" class="slider-card">
+                        {#each Array(10).fill(newGames).flat() as game, index (`new-${game.id}-${index}`)}
+                            <a href={resolve('/products/details/[id]', { id: String(game.id) })} class="slider-card">
                                 <div class="badges">
                                     {#if game.promo_price > 0 && game.promo_price < game.price}
                                         <span class="badge sale">PROMO</span>
@@ -76,8 +77,8 @@
             {:else}
                 <div class="marquee-container">
                     <div class="marquee-track reverse">
-                        {#each Array(10).fill(promoGames).flat() as game}
-                            <a href="/gry" class="slider-card sale">
+                        {#each Array(10).fill(promoGames).flat() as game, index (`promo-${game.id}-${index}`)}
+                            <a href={resolve('/products/details/[id]', { id: String(game.id) })} class="slider-card sale">
                                 <div class="badges">
                                     {#if game.promo_price > 0 && game.promo_price < game.price}
                                         <span class="badge sale">PROMO</span>
@@ -109,8 +110,8 @@
             {:else}
                 <div class="marquee-container">
                     <div class="marquee-track">
-                        {#each Array(10).fill(usedGames).flat() as game}
-                            <a href="/gry" class="slider-card used">
+                        {#each Array(10).fill(usedGames).flat() as game, index (`used-${game.id}-${index}`)}
+                            <a href={resolve('/products/details/[id]', { id: String(game.id) })} class="slider-card used">
                                 <div class="badges">
                                     {#if game.promo_price > 0 && game.promo_price < game.price}
                                         <span class="badge sale">PROMO</span>

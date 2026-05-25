@@ -1,42 +1,42 @@
 <script>
-    import { supabase } from '$lib/supabaseClient';
-    import { onMount } from 'svelte';
+	import { resolve } from '$app/paths';
+	import { loadCartGlobal } from '$lib/store.svelte.js';
+	import { addToCart } from '$lib/services/cart.js';
 
-    // 1. ODBIERAMY DANE Z BAZY (Dostarczone przez plik +page.js)
-    let { data } = $props();
-    let product = data.product; 
+	let { data } = $props();
 
-    // 2. LOGIKA KONTA I KOSZYKA
-    let currentUser = $state(null);
+	let product = $derived(data.product);
+	let currentUser = $derived(data.user || null);
+	let isAdmin = $derived(data.user?.role?.toLowerCase() === 'admin');
 
-    onMount(async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        currentUser = session?.user || null;
-    });
+	async function handleAddToCart() {
+		if (!product) return;
 
-    async function addToCart() {
-        if (!product) return;
-        if (!currentUser) return alert('Musisz być zalogowany jako klient, aby kupować!');
-        if (currentUser.email === 'admin@sklep.pl') return alert('Admin nie robi zakupów!');
+		const result = await addToCart(
+            product,
+            currentUser?.id,
+            isAdmin,
+            [],
+            1
+        );
 
-        const { error } = await supabase
-            .from('cart_items')
-            .insert({ user_id: currentUser.id, product_id: product.id });
-            
-        if (error) {
-            alert(error.code === '23505' ? 'Gra jest już w koszyku!' : error.message);
-        } else {
-            // Zakładamy, że główny layout (z globalnym navbarem) sam obsłuży aktualizację licznika w navbarze
-            alert(`Dodano do koszyka: ${product.name}!`);
-        }
-    }
+		if (result?.error) {
+			alert('Błąd dodawania do koszyka: ' + result.error.message);
+			return;
+		}
 
-    // 3. FUNKCJA OBRAZKÓW (Zapożyczona ze strony głównej)
-    function getAbsoluteTexturePath(imageFileName) {
-        if (!imageFileName) return 'https://twojsklep.pl/assets/textures/games/placeholder-cover.jpg';
-        if (imageFileName.startsWith('http://') || imageFileName.startsWith('https://')) return imageFileName;
-        return `https://twojsklep.pl/assets/textures/games/${imageFileName}`;
-    }
+		if (result) {
+			alert(`Dodano do koszyka: ${product.name}!`);
+			loadCartGlobal();
+		}
+	}
+
+	/** @param {string} imageFileName */
+	function getAbsoluteTexturePath(imageFileName) {
+		if (!imageFileName) return 'https://twojsklep.pl/assets/textures/games/placeholder-cover.jpg';
+		if (imageFileName.startsWith('http://') || imageFileName.startsWith('https://')) return imageFileName;
+		return `https://twojsklep.pl/assets/textures/games/${imageFileName}`;
+	}
 </script>
 
 <div class="page-wrapper">
@@ -66,7 +66,8 @@
                     <div class="quick-meta">
                         <span class="tag">🎮 {product.category || 'Gra'}</span>
                         <span class="tag">💻 {product.platform || 'Brak platformy'}</span>
-                        <span class="tag">🌍 {product.region || 'Global'}</span> 
+                        <span class="tag">🌍 {product.region || 'Global'}</span>
+                        <span class="tag stock-tag">📦 Dostępne sztuki: {product.stock_quantity}</span>
                     </div>
 
                     <div class="buy-card">
@@ -85,9 +86,19 @@
                             </div>
                         </div>
                         
-                        <button class="cta-button primary" onclick={addToCart}>KUP TERAZ</button>
+                        <button
+                            class="cta-button primary"
+                            onclick={handleAddToCart}
+                            disabled={product.stock_quantity <= 0}
+                        >
+                            {product.stock_quantity > 0 ? 'KUP TERAZ' : 'BRAK W MAGAZYNIE'}
+                        </button>
                         
-                        <p class="stock">✅ Dostępne - natychmiasta na e-mail</p>
+                        <p class="stock">
+                            {product.stock_quantity > 0
+                                ? '✅ Dostępne - natychmiast na e-mail'
+                                : '❌ Produkt chwilowo niedostępny'}
+                        </p>
                     </div>
                 </div>
             </section>
@@ -127,7 +138,7 @@
             <div class="error-view">
                 <h1>Błąd 404</h1>
                 <p>Ojej! Nie znaleziono gry o podanym ID w naszej bazie danych.</p>
-                <a href="/" class="cta-button primary">Wróć na stronę główną</a>
+                <a href={resolve('/')} class="cta-button primary">Wróć na stronę główną</a>
             </div>
         {/if}
     </main>
@@ -171,6 +182,8 @@
     
     .quick-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 30px; }
     .tag { padding: 6px 14px; border-radius: 4px; font-weight: 600; font-size: 0.9rem; background-color: #1a1a24; border: 1px solid #2a2a35; color: #b3b3b3;}
+
+    .stock-tag { color: #48bb78; font-weight: 800; }
 
     /* KARTA ZAKUPU ZGODNA Z UI */
     .buy-card { background: #1a1a24; padding: 30px; border-radius: 8px; border: 1px solid #2a2a35; }
@@ -246,4 +259,13 @@
         .req-grid { grid-template-columns: 1fr; }
         h1 { font-size: 2.5rem; }
     }
+
+    .cta-button:disabled {
+        background-color: #4a5568;
+        color: #a0aec0;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
 </style>
