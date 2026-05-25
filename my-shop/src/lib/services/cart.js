@@ -19,8 +19,8 @@ export async function loadCart(userId) {
  * @param {any} product - Obiekt produktu
  * @param {any} userId - ID użytkownika
  * @param {any} isAdmin - Czy użytkownik jest adminem
- * @param {any[]} cart - Aktualna zawartość koszyka (tablica)
- * @param {any} requestedQty - Żądana ilość (domyślnie 1)
+ * @param {any[]} cart - Aktualna zawartość koszyka
+ * @param {any} requestedQty - Żądana ilość
  */
 export async function addToCart(product, userId, isAdmin, cart, requestedQty = 1) {
     if (!userId) return alert('Musisz być zalogowany jako klient, aby dokonać zakupu!');
@@ -29,24 +29,39 @@ export async function addToCart(product, userId, isAdmin, cart, requestedQty = 1
     if (requestedQty < 1) requestedQty = 1;
 
     if (requestedQty > product.stock_quantity) {
-      return alert(`Błąd: Mamy tylko ${product.stock_quantity} sztuk w magazynie!`);
+        return alert(`Błąd: Mamy tylko ${product.stock_quantity} sztuk w magazynie!`);
     }
 
-    let existingItem = cart.find(c => c.product_id === product.id);
-    
-    if (existingItem) {
-      let newTotalQty = existingItem.quantity + requestedQty;
-      if (newTotalQty > product.stock_quantity) {
-        return alert(`Nie możesz dodać więcej! Masz już w koszyku ${existingItem.quantity} szt.`);
-      }
-      return await supabase.from('cart_items').update({ quantity: newTotalQty }).eq('id', existingItem.id);
-    } else {
-      return await supabase.from('cart_items').insert({ 
-        user_id: userId, 
-        product_id: product.id, 
-        quantity: requestedQty 
-      });
+    const { data: existingItem, error: existingError } = await supabase
+        .from('cart_items')
+        .select('id, quantity')
+        .eq('user_id', userId)
+        .eq('product_id', product.id)
+        .maybeSingle();
+
+    if (existingError) {
+        return { error: existingError };
     }
+
+    if (existingItem) {
+        const newTotalQty = existingItem.quantity + requestedQty;
+
+        if (newTotalQty > product.stock_quantity) {
+            alert(`Nie możesz dodać więcej! Masz już w koszyku ${existingItem.quantity} szt.`);
+            return null;
+        }
+
+        return await supabase
+            .from('cart_items')
+            .update({ quantity: newTotalQty })
+            .eq('id', existingItem.id);
+    }
+
+    return await supabase.from('cart_items').insert({
+        user_id: userId,
+        product_id: product.id,
+        quantity: requestedQty
+    });
 }
 
 /**

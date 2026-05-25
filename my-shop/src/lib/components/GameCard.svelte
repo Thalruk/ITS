@@ -1,11 +1,30 @@
 <script>
+    import { resolve } from '$app/paths';
     import { authStore } from '$lib/store.svelte.js';
 
-    /** @type {{ game: any, onAddToCart: Function, onToggleVisibility: Function, onEdit: Function, onDelete: Function, onClone: Function }} */
-    let { game, onAddToCart, onToggleVisibility, onEdit, onDelete, onClone } = $props();
+    /**
+     * @typedef {Object} GameCardProps
+     * @property {any} game
+     * @property {(product: any, qty: number) => void | Promise<void>} onAddToCart
+     * @property {(product: any) => void | Promise<void>} [onToggleVisibility]
+     * @property {(product: any) => void} [onEdit]
+     * @property {(productId: number) => void | Promise<void>} [onDelete]
+     * @property {(product: any) => void | Promise<void>} [onClone]
+     * @property {boolean} [showAdminControls]
+     */
+
+    /** @type {GameCardProps} */
+    let {
+        game,
+        onAddToCart,
+        onToggleVisibility,
+        onEdit,
+        onDelete,
+        onClone,
+        showAdminControls = false
+    } = $props();
 
     let quantity = $state(1);
-    let categoryName = $derived(game.categories?.name || game.category_name || '');
 
     /** @param {string} imageFileName */
     function getAbsoluteTexturePath(imageFileName) {
@@ -31,13 +50,21 @@
                 <span class="badge used">UŻYWANA</span>
             {/if}
         </div>
-        <img src={getAbsoluteTexturePath(game.image_url)} alt={game.name} />
+        <a
+            href={resolve('/products/details/[id]', { id: String(game.id) })}
+            class="image-link"
+            aria-label={`Zobacz szczegóły gry ${game.name}`}
+        >
+            <img src={getAbsoluteTexturePath(game.image_url)} alt={game.name} />
+        </a>
     </div>
     
     <div class="title-row">
-        <h3>{game.name}</h3>
-        {#if categoryName}
-            <span class="category-tag">{categoryName}</span>
+        <a href={resolve('/products/details/[id]', { id: String(game.id) })} class="title-link">
+            <h3>{game.name}</h3>
+        </a>
+        {#if game.category}
+            <span class="category-tag">{game.category}</span>
         {/if}
     </div>
     
@@ -65,18 +92,18 @@
         {/if}
     {/if}
     
-    {#if authStore.isAdmin}
+    {#if authStore.isAdmin && showAdminControls}
         <div class="admin-controls">
-            <button class="toggle-btn" class:restore={game.is_hidden} onclick={() => onToggleVisibility(game)}>
+            <button class="toggle-btn" class:restore={game.is_hidden} onclick={() => onToggleVisibility?.(game)}>
                 {game.is_hidden ? 'Przywróć widoczność' : 'Ukryj przed klientami'}
             </button>
-            
+
             <div class="action-buttons-row">
-                <button class="edit-btn" onclick={() => onEdit(game)}>Edytuj ✏️</button>
-                <button class="clone-btn" onclick={() => onClone(game)}>Klonuj 🗐</button>
+                <button class="edit-btn" onclick={() => onEdit?.(game)}>Edytuj ✏️</button>
+                <button class="clone-btn" onclick={() => onClone?.(game)}>Klonuj 🗐</button>
             </div>
 
-            <button class="del-btn" onclick={() => onDelete(game.id)}>
+            <button class="del-btn" onclick={() => onDelete?.(game.id)}>
                 Usuń z bazy 🗑️
             </button>
         </div>
@@ -96,7 +123,8 @@
         object-fit: contain; 
         background: #1a202c; 
         border-radius: 4px; 
-        margin-bottom: 15px; 
+        margin-bottom: 15px;
+        transition: transform 0.2s ease-in-out; 
     }
     
     /* Elastyczny kontener układający odznaki jedna pod drugą w zgrabny stos */
@@ -134,4 +162,10 @@
     .clone-btn:hover { background: #2b6cb0; }
     .del-btn { background: #e53e3e; color: white; font-weight: bold; border: none; padding: 6px; border-radius: 4px; cursor: pointer; width: 100%; font-size: 0.8rem; }
     .del-btn:hover { background: #c53030; }
+    .image-link,
+    .title-link { color: inherit; text-decoration: none; }
+    .image-link { display: block; }
+    .image-link:hover img { transform: scale(1.02); }
+    .title-link:hover { color: #00ffcc; }
+
 </style>
