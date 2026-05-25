@@ -16,26 +16,26 @@
 	// --- LOGIKA FILTROWANIA PO ADRESIE URL ---
 	let currentFilter = $derived($page.url.searchParams.get('filter'));
 
-	// --- ZAAWANSOWANE FILTROWANIE I SORTOWANIE (ŁĄCZONE) ---
+	// --- ZAAWANSOWANE FILTROWANIE I SORTOWANIE ---
 	let displayedGames = $derived(
 		(data.products || [])
 			.filter((/** @type {any} */ p) => {
-				// 1. Filtrowanie po zakładkach z menu (Nowości, Promocje, Używane)
+				
 				if (currentFilter === 'nowosci' && p.is_new !== true) return false;
 				if (currentFilter === 'promocje' && !(p.promo_price > 0 && p.promo_price < p.price)) return false;
 				if (currentFilter === 'uzywane' && p.is_used !== true) return false;
 
-				// 2. Globalna wyszukiwarka po nazwie gry
+				
 				if (filterStore.searchQuery && !p.name.toLowerCase().includes(filterStore.searchQuery.toLowerCase())) {
 					return false;
 				}
 
-				// 3. Globalne filtrowanie po Wydawnictwie / Producencie (w bazie kolumna description)
+				
 				if (filterStore.selectedPublisher && p.description !== filterStore.selectedPublisher) {
 					return false;
 				}
 
-				// 4. Globalne filtrowanie po cenie (uwzględnia promo_price, jeśli gra jest na przecenie)
+				
 				const effectivePrice = (p.promo_price > 0 && p.promo_price < p.price) ? p.promo_price : p.price;
 				if (effectivePrice < filterStore.minPrice || effectivePrice > filterStore.maxPrice) {
 					return false;
@@ -44,7 +44,7 @@
 				return true; 
 			})
 			.sort((a, b) => {
-				// 5. Logika sortowania wyników
+				
 				const priceA = (a.promo_price > 0 && a.promo_price < a.price) ? a.promo_price : a.price;
 				const priceB = (b.promo_price > 0 && b.promo_price < b.price) ? b.promo_price : b.price;
 
