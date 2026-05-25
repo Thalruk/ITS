@@ -1,4 +1,5 @@
 <script>
+    import { resolve } from '$app/paths';
     import { authStore } from '$lib/store.svelte.js';
 
     /**
@@ -49,11 +50,19 @@
                 <span class="badge used">UŻYWANA</span>
             {/if}
         </div>
-        <img src={getAbsoluteTexturePath(game.image_url)} alt={game.name} />
+        <a
+            href={resolve('/products/details/[id]', { id: String(game.id) })}
+            class="image-link"
+            aria-label={`Zobacz szczegóły gry ${game.name}`}
+        >
+            <img src={getAbsoluteTexturePath(game.image_url)} alt={game.name} />
+        </a>
     </div>
     
     <div class="title-row">
-        <h3>{game.name}</h3>
+        <a href={resolve('/products/details/[id]', { id: String(game.id) })} class="title-link">
+            <h3>{game.name}</h3>
+        </a>
         {#if game.category}
             <span class="category-tag">{game.category}</span>
         {/if}
@@ -114,7 +123,8 @@
         object-fit: contain; 
         background: #1a202c; 
         border-radius: 4px; 
-        margin-bottom: 15px; 
+        margin-bottom: 15px;
+        transition: transform 0.2s ease-in-out; 
     }
     
     /* Elastyczny kontener układający odznaki jedna pod drugą w zgrabny stos */
@@ -152,4 +162,10 @@
     .clone-btn:hover { background: #2b6cb0; }
     .del-btn { background: #e53e3e; color: white; font-weight: bold; border: none; padding: 6px; border-radius: 4px; cursor: pointer; width: 100%; font-size: 0.8rem; }
     .del-btn:hover { background: #c53030; }
+    .image-link,
+    .title-link { color: inherit; text-decoration: none; }
+    .image-link { display: block; }
+    .image-link:hover img { transform: scale(1.02); }
+    .title-link:hover { color: #00ffcc; }
+
 </style>

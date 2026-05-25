@@ -1,6 +1,7 @@
 <script>
   import { supabase } from '$lib/supabaseClient';
   import { invalidateAll } from '$app/navigation';
+  import { loadCartGlobal } from '$lib/store.svelte.js';
   import { onMount } from 'svelte';
   import './koszyk.css';
   
@@ -67,26 +68,33 @@
   });
 
   async function loadCart() {
+    if (!currentUser) {
+      cart = [];
+      return;
+    }
+
     const { data: c } = await supabase
       .from('cart_items')
       .select('id, quantity, product_id, products(*)')
       .eq('user_id', currentUser.id)
       .order('id', { ascending: true });
+
     cart = c || [];
+    await loadCartGlobal();
   }
 
   /** @param {number} cartItemId */
   async function removeFromCart(cartItemId) {
     const { error } = await supabase.from('cart_items').delete().eq('id', cartItemId);
     if (error) alert(error.message);
-    else loadCart();
+    else await loadCart();
   }
 
   async function clearCart() {
     if (!confirm('Czy na pewno chcesz usunąć wszystkie produkty z koszyka?')) return;
     const { error } = await supabase.from('cart_items').delete().eq('user_id', currentUser.id);
     if (error) alert('Błąd: ' + error.message);
-    else loadCart();
+    else await loadCart();
   }
 
   /** @param {any} item @param {number} delta */
@@ -100,7 +108,7 @@
 
     const { error } = await supabase.from('cart_items').update({ quantity: newQty }).eq('id', item.id);
     if (error) alert('Błąd: ' + error.message);
-    else loadCart();
+    else await loadCart();
   }
 
   // --- FUNKCJA WYSYŁAJĄCA DANE DO orders.js ---
@@ -124,12 +132,12 @@
               streetName: '', buildingNumber: '', apartmentNumber: '', 
               postalCode: '', city: '', country: 'Polska', phone: '', paczkomatId: '' 
           };
-          loadCart();
-          invalidateAll();
+          await loadCart();
+          await invalidateAll();
       } else if (typeof success === 'object' && success !== null && success.action === 'refresh_cart') {
           // Teraz TypeScript wie na 100%, że to obiekt i przestanie krzyczeć
-          loadCart();
-          invalidateAll();
+          await loadCart();
+          await invalidateAll();
       }
   }
 </script>
@@ -137,7 +145,7 @@
 
 <header class="cart-page-header">
   <h1>Twój Koszyk</h1>
-<button class="back-link" onclick={() => window.location.href = '/'}>Wróć do katalogu</button>
+<button class="back-link" onclick={() => window.location.href = '/gry'}>Wróć do katalogu</button>
 </header>
 
 <main class="cart-page-main">

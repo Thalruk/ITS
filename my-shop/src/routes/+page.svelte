@@ -41,7 +41,7 @@
                 <div class="marquee-container">
                     <div class="marquee-track">
                         {#each Array(10).fill(newGames).flat() as game, index (`new-${game.id}-${index}`)}
-                            <a href={resolve('/gry')} class="slider-card">
+                            <a href={resolve('/products/details/[id]', { id: String(game.id) })} class="slider-card">
                                 <div class="badges">
                                     {#if game.promo_price > 0 && game.promo_price < game.price}
                                         <span class="badge sale">PROMO</span>
@@ -78,7 +78,7 @@
                 <div class="marquee-container">
                     <div class="marquee-track reverse">
                         {#each Array(10).fill(promoGames).flat() as game, index (`promo-${game.id}-${index}`)}
-                            <a href={resolve('/gry')} class="slider-card sale">
+                            <a href={resolve('/products/details/[id]', { id: String(game.id) })} class="slider-card sale">
                                 <div class="badges">
                                     {#if game.promo_price > 0 && game.promo_price < game.price}
                                         <span class="badge sale">PROMO</span>
@@ -111,7 +111,7 @@
                 <div class="marquee-container">
                     <div class="marquee-track">
                         {#each Array(10).fill(usedGames).flat() as game, index (`used-${game.id}-${index}`)}
-                            <a href={resolve('/gry')} class="slider-card used">
+                            <a href={resolve('/products/details/[id]', { id: String(game.id) })} class="slider-card used">
                                 <div class="badges">
                                     {#if game.promo_price > 0 && game.promo_price < game.price}
                                         <span class="badge sale">PROMO</span>
