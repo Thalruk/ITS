@@ -11,9 +11,9 @@
   let { data } = $props();
 
   /** @type {any} */
-  let currentUser = $state(null);
-  let authChecked = $state(false);
-  let isAdmin = $derived(currentUser?.email === 'admin@sklep.pl');
+  let currentUser = $derived(data.user || null);
+  let authChecked = $derived(true);
+  let isAdmin = $derived(data.user?.role?.toLowerCase() === 'admin');
 
   /** @type {any[]} */
   let cart = $state([]);
@@ -44,12 +44,15 @@
   let deliveryPrice = $derived(data.deliveryMethods.find((/** @type {any} */ d) => d.id == selectedDeliveryId)?.price || 0);
   let finalTotal = $derived(itemsTotal + deliveryPrice);
 
+  $effect(() => {
+      if (currentUser && !isAdmin) {
+          loadCart();
+      } else {
+          cart = [];
+      }
+  });
+
   onMount(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      currentUser = session?.user || null;
-      authChecked = true;
-      if (currentUser && !isAdmin) loadCart();
-    });
 
     const subscription = supabase
       .channel('koszyk-products-channel')
@@ -145,12 +148,10 @@
   {:else if !currentUser}
     <section class="checkout-section">
       <p>Musisz być zalogowany jako klient, aby zobaczyć koszyk.</p>
-     <button class="back-link" onclick={() => window.location.href = '/'}>Wróć do katalogu</button>
     </section>
   {:else if isAdmin}
     <section class="checkout-section">
       <p>Admin nie korzysta z koszyka.</p>
-      <button class="back-link" onclick={() => window.location.href = '/'}>Wróć do katalogu</button>
     </section>
   {:else}
     <section class="checkout-section">
