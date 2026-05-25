@@ -12,6 +12,15 @@ export const cartStore = $state({
     items: []
 });
 
+//  Globalny stan wyszukiwania, filtrowania i sortowania dla całego sklepu
+export const filterStore = $state({
+    searchQuery: '',          
+    selectedPublisher: '',    
+    minPrice: 0,              
+    maxPrice: 500,            
+    sortBy: 'default'        
+});
+
 // Zcentralizowana funkcja do ładowania koszyka klienta
 export async function loadCartGlobal() {
     if (!authStore.currentUser) return;
