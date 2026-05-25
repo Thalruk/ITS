@@ -1,7 +1,6 @@
 <script>
-    import { base, resolve } from '$app/paths';
-    import { authStore } from '$lib/store.svelte.js';
-    import { supabase } from '$lib/supabaseClient';
+	import { base, resolve } from '$app/paths';
+	import { authStore } from '$lib/store.svelte.js';
 
     /** @type {{ cartCount: number }} */
     let { cartCount = 0 } = $props();
@@ -21,17 +20,6 @@
         if (element) {
             element.scrollIntoView({ behavior: 'smooth' });
         }
-    }
-
-    async function handleLogout() {
-        await supabase.auth.signOut();
-
-        await fetch('/?/logout', {
-            method: 'POST',
-            body: new FormData()
-        });
-
-        window.location.href = resolve('/');
     }
 
 	function goToRolePanel() {
@@ -118,28 +106,17 @@
         </ul>
 
         <div class="nav-actions">
-            {#if !authStore.currentUser}
-                <div class="auth-links">
-                    <a href={resolve('/auth/login')} class="auth-btn">Zaloguj</a>
-                    <a href={resolve('/auth/register')} class="auth-btn highlight">Rejestracja</a>
-                </div>
-            {:else}
-                <div class="auth-links logged-in-actions">
-					<button
-						type="button"
-						class="icon-btn"
-						aria-label={authStore.isAdmin ? 'Panel administratora' : 'Panel klienta'}
-						title={authStore.isAdmin ? 'Panel administratora' : 'Panel klienta'}
-						onclick={goToRolePanel}
-					>
-						<span class="nav-emoji">{authStore.isAdmin ? '🛠️' : '👤'}</span>
-					</button>
-
-					<button onclick={handleLogout} class="auth-btn logout-nav-btn">
-						Wyloguj
-					</button>
-				</div>
-            {/if}
+            {#if authStore.currentUser}
+				<button
+					type="button"
+					class="icon-btn"
+					aria-label={authStore.isAdmin ? 'Panel administratora' : 'Panel klienta'}
+					title={authStore.isAdmin ? 'Panel administratora' : 'Panel klienta'}
+					onclick={goToRolePanel}
+				>
+					<span class="nav-emoji">{authStore.isAdmin ? '🛠️' : '👤'}</span>
+				</button>
+			{/if}
 
             <a href={resolve('/koszyk')} class="cart-btn" aria-label="Koszyk" title="Koszyk">
                 <span class="nav-emoji">🛒</span>
@@ -279,60 +256,6 @@
         cursor: pointer;
     }
 
-    .auth-links {
-        display: flex;
-        gap: 1rem;
-        align-items: center;
-        margin-right: 0.5rem;
-    }
-
-    .logged-in-actions {
-        gap: 0.5rem;
-    }
-
-    .auth-btn {
-        text-decoration: none;
-        color: white;
-        font-weight: 600;
-        font-size: 0.95rem;
-        text-transform: uppercase;
-        transition:
-            color 0.3s,
-            background-color 0.2s;
-        cursor: pointer;
-        background: transparent;
-        border: none;
-        padding: 0;
-    }
-
-    .auth-btn:hover {
-        color: #00ffcc;
-    }
-
-    .auth-btn.highlight {
-        border: 1px solid #00ffcc;
-        padding: 0.4rem 0.8rem;
-        border-radius: 4px;
-        color: #00ffcc;
-    }
-
-    .auth-btn.highlight:hover {
-        background: rgba(0, 255, 204, 0.1);
-    }
-
-    .logout-nav-btn {
-        color: #8e9db0;
-        padding: 0.4rem 0.8rem;
-        font-size: 0.85rem;
-        border-left: 1px solid #2a2a35;
-        padding-left: 1rem;
-        margin-left: 0.5rem;
-    }
-
-    .logout-nav-btn:hover {
-        color: #ff3366;
-    }
-
     @media (max-width: 1100px) {
         .nav-links {
             display: none;
@@ -358,9 +281,6 @@
         .mobile-toggle {
             display: block;
         }
-
-        .auth-links {
-            display: none;
-        }
     }
+	
 </style>

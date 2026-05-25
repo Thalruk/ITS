@@ -5,7 +5,7 @@
 
     import { supabase } from '$lib/supabaseClient';
     import { invalidateAll } from '$app/navigation';
-    import { base } from '$app/paths';
+    import { base, resolve } from '$app/paths';
     import { authStore, cartStore, loadCartGlobal } from '$lib/store.svelte.js';
     import { untrack } from 'svelte';
 
@@ -39,37 +39,13 @@
         };
     });
 
-    /** @param {string} email */
-    async function loginAs(email) {
-        const { data: loginData, error } = await supabase.auth.signInWithPassword({
-            email,
-            password: 'haslo123'
-        });
-
-        if (error) {
-            alert('Błąd logowania: Upewnij się, że konto istnieje w Supabase!');
-            return;
-        }
-
-        authStore.currentUser = loginData.user;
-        authStore.isAdmin = email === 'admin@sklep.pl';
-
-        let targetPath;
-
-        if (authStore.isAdmin) {
-            cartStore.items = [];
-            targetPath = '/admin';
-        } else {
-            await loadCartGlobal();
-            targetPath = '/zamowienia';
-        }
-
-        await invalidateAll();
-        window.location.href = `${base}${targetPath}`;
-    }
-
     async function logout() {
         await supabase.auth.signOut();
+
+        await fetch('/?/logout', {
+            method: 'POST',
+            body: new FormData()
+        });
 
         authStore.currentUser = null;
         authStore.isAdmin = false;
@@ -98,11 +74,13 @@
         </small>
     </span>
 
-    <div class="dev-buttons">
-        <button onclick={() => logout()} class="logout-btn">Wyloguj</button>
-        <button onclick={() => loginAs('tester@sklep.pl')}>Tester 1</button>
-        <button onclick={() => loginAs('tester2@sklep.pl')}>Tester 2</button>
-        <button onclick={() => loginAs('admin@sklep.pl')} class="admin-btn">Admin</button>
+    <div class="top-auth-actions">
+        {#if !authStore.currentUser}
+            <a href={resolve('/auth/login')} class="top-auth-btn">Zaloguj</a>
+            <a href={resolve('/auth/register')} class="top-auth-btn register-btn">Rejestracja</a>
+        {:else}
+            <button onclick={() => logout()} class="top-auth-btn logout-btn">Wyloguj</button>
+        {/if}
     </div>
 </div>
 
@@ -138,35 +116,41 @@
         border-bottom: 2px solid #3b82f6;
     }
 
-    .dev-buttons button {
+    .top-auth-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    }
+
+    .top-auth-btn {
         padding: 6px 14px;
-        margin-left: 8px;
         border: none;
         border-radius: 6px;
         cursor: pointer;
-        background: #1a6004;
+        background: #2563eb;
         color: white;
         font-weight: bold;
+        text-decoration: none;
+        font-size: 0.85rem;
     }
 
-    .dev-buttons button:hover {
-        background: #35ba1e;
+    .top-auth-btn:hover {
+        background: #1d4ed8;
     }
 
-    .dev-buttons .admin-btn {
-        background: #b12828;
+    .register-btn {
+        background: #0f766e;
     }
 
-    .dev-buttons .admin-btn:hover {
-        background: #dc2626;
+    .register-btn:hover {
+        background: #0d9488;
     }
 
-    .dev-buttons .logout-btn {
+    .logout-btn {
         background: #475569;
-        color: white;
     }
 
-    .dev-buttons .logout-btn:hover {
+    .logout-btn:hover {
         background: #64748b;
     }
 
