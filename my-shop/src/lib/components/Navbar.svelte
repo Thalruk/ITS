@@ -1,12 +1,13 @@
 <script>
 	import { base, resolve } from '$app/paths';
+	import { page } from '$app/stores';
 	import { authStore, filterStore } from '$lib/store.svelte.js';
 
 	/** @type {{ cartCount: number }} */
 	let { cartCount = 0 } = $props();
 
 	let isMobileMenuOpen = $state(false);
-	let areFiltersVisible = $state(true);
+	let areFiltersVisible = $derived($page.url.pathname === '/gry');
 
 	function toggleMobileMenu() {
 		isMobileMenuOpen = !isMobileMenuOpen;
