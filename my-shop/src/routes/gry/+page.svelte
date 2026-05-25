@@ -1,121 +1,179 @@
 <script>
-    import { supabase } from '$lib/supabaseClient';
-    import { page } from '$app/stores'; 
-    import { authStore, loadCartGlobal } from '$lib/store.svelte.js';
-    import GameCard from '$lib/components/GameCard.svelte';
-    import EditModal from '$lib/components/EditModal.svelte';
-    import { saveEdit, deleteProduct, toggleVisibility, cloneProduct } from '$lib/services/admin.js';
+	import { page } from '$app/stores';
+	import { authStore, filterStore, loadCartGlobal } from '$lib/store.svelte.js';
+	import GameCard from '$lib/components/GameCard.svelte';
+	import EditModal from '$lib/components/EditModal.svelte';
+	import { addToCart } from '$lib/services/cart.js';
+	import { saveEdit, deleteProduct, toggleVisibility, cloneProduct } from '$lib/services/admin.js';
 
-    /** @type {{ data: any }} */
-    let { data } = $props();
+	/** @type {{ data: any }} */
+	let { data } = $props();
 
-    /** @type {any} */
-    let editingProduct = $state(null);
+	/** @type {any} */
+	let editingProduct = $state(null);
 
-    /** @param {any} product */
-    function handleEditProduct(product) {
-        editingProduct = product;
-    }
+	let currentFilter = $derived($page.url.searchParams.get('filter'));
 
-    /** @param {any} product */
-    async function handleSaveEdit(product) {
-        const success = await saveEdit(product);
+	let displayedGames = $derived(
+		(data.products || [])
+			.filter((/** @type {any} */ p) => {
+				if (currentFilter === 'nowosci' && p.is_new !== true) return false;
+				if (currentFilter === 'promocje' && !(p.promo_price > 0 && p.promo_price < p.price)) return false;
+				if (currentFilter === 'uzywane' && p.is_used !== true) return false;
 
-        if (success) {
-            editingProduct = null;
-        }
-    }
+				if (
+					filterStore.searchQuery &&
+					!p.name.toLowerCase().includes(filterStore.searchQuery.toLowerCase())
+				) {
+					return false;
+				}
 
-    /** @param {any} product */
-    async function handleToggleVisibility(product) {
-        await toggleVisibility(product);
-    }
+				if (filterStore.selectedPublisher && p.description !== filterStore.selectedPublisher) {
+					return false;
+				}
 
-    /** @param {any} productId */
-    async function handleDeleteProduct(productId) {
-        await deleteProduct(productId);
-    }
+				const effectivePrice = p.promo_price > 0 && p.promo_price < p.price ? p.promo_price : p.price;
 
-    /** @param {any} product */
-    async function handleCloneProduct(product) {
-        await cloneProduct(product);
-    }
+				if (effectivePrice < filterStore.minPrice || effectivePrice > filterStore.maxPrice) {
+					return false;
+				}
 
-    // --- LOGIKA FILTROWANIA PO ADRESIE URL ---
-    let currentFilter = $derived($page.url.searchParams.get('filter'));
+				return true;
+			})
+			.sort((/** @type {any} */ a, /** @type {any} */ b) => {
+				const priceA = a.promo_price > 0 && a.promo_price < a.price ? a.promo_price : a.price;
+				const priceB = b.promo_price > 0 && b.promo_price < b.price ? b.promo_price : b.price;
 
-    let displayedGames = $derived((data.products || []).filter((/** @type {any} */ p) => {
-        if (currentFilter === 'nowosci') return p.is_new === true;
-        if (currentFilter === 'promocje') return p.promo_price > 0 && p.promo_price < p.price;
-        if (currentFilter === 'uzywane') return p.is_used === true;
-        return true; 
-    }));
+				if (filterStore.sortBy === 'price-asc') return priceA - priceB;
+				if (filterStore.sortBy === 'price-desc') return priceB - priceA;
+				if (filterStore.sortBy === 'name-asc') return a.name.localeCompare(b.name);
 
-    let sectionTitle = $derived(
-        currentFilter === 'nowosci' ? '🔥 Nowości Wydawnicze' :
-        currentFilter === 'promocje' ? '⚡ Wyjątkowe Promocje' :
-        currentFilter === 'uzywane' ? '💿 Gry Używane' :
-        '🕹️ Pełny Katalog Gier'
-    );
+				return 0;
+			})
+	);
 
-    /** @param {any} product * @param {number} qty */
-    async function handleAddToCart(product, qty) {
-        if (!authStore.currentUser) return alert('Musisz być zalogowany jako klient, aby dokonać zakupu!');
-        if (authStore.isAdmin) return alert('Admin nie robi zakupów!');
-        if (qty > product.stock_quantity) return alert(`Błąd: Mamy tylko ${product.stock_quantity} sztuk w magazynie!`);
+	let sectionTitle = $derived(
+		currentFilter === 'nowosci'
+			? '🔥 Nowości Wydawnicze'
+			: currentFilter === 'promocje'
+				? '⚡ Wyjątkowe Promocje'
+				: currentFilter === 'uzywane'
+					? '💿 Gry Używane'
+					: '🕹️ Pełny Katalog Gier'
+	);
 
-        let existingItem = data.cart?.find((/** @type {any} */ c) => c.product_id === product.id);
+	/** @param {any} product */
+	function handleEditProduct(product) {
+		editingProduct = product;
+	}
 
-        if (existingItem) {
-            let newTotalQty = existingItem.quantity + qty;
-            if (newTotalQty > product.stock_quantity) return alert('Brak wystarczającej ilości w magazynie.');
-            const { error } = await supabase.from('cart_items').update({ quantity: newTotalQty }).eq('id', existingItem.id);
-            if (!error) { alert('Zaktualizowano ilość!'); loadCartGlobal(); }
-        } else {
-            const { error } = await supabase.from('cart_items').insert({ 
-                user_id: authStore.currentUser.id, product_id: product.id, quantity: qty 
-            });
-            if (!error) { alert('Dodano do koszyka!'); loadCartGlobal(); }
-        }
-    }
+	/** @param {any} product */
+	async function handleSaveEdit(product) {
+		const success = await saveEdit(product);
 
+		if (success) {
+			editingProduct = null;
+		}
+	}
+
+	/** @param {any} product */
+	async function handleToggleVisibility(product) {
+		await toggleVisibility(product);
+	}
+
+	/** @param {any} productId */
+	async function handleDeleteProduct(productId) {
+		await deleteProduct(productId);
+	}
+
+	/** @param {any} product */
+	async function handleCloneProduct(product) {
+		await cloneProduct(product);
+	}
+
+	/** @param {any} product @param {number} qty */
+	async function handleAddToCart(product, qty) {
+		const result = await addToCart(
+			product,
+			authStore.currentUser?.id,
+			authStore.isAdmin,
+			data.cart || [],
+			qty
+		);
+
+		if (result?.error) {
+			alert('Błąd dodawania do koszyka: ' + result.error.message);
+			return;
+		}
+
+		if (result) {
+			alert('Dodano do koszyka!');
+			loadCartGlobal();
+		}
+	}
 </script>
 
+{#if editingProduct}
+	<EditModal
+		product={editingProduct}
+		onSave={handleSaveEdit}
+		onCancel={() => (editingProduct = null)}
+	/>
+{/if}
+
 <section class="catalog">
-    <h2>{sectionTitle}</h2>
-    
-    <div class="grid">
-        {#each displayedGames as p (p.id)}
-            {#if !p.is_hidden || authStore.isAdmin}
-                <GameCard
-                    game={p}
-                    onAddToCart={handleAddToCart}
-                    onToggleVisibility={handleToggleVisibility}
-                    onEdit={handleEditProduct}
-                    onDelete={handleDeleteProduct}
-                    showAdminControls={authStore.isAdmin}
-                    onClone={handleCloneProduct}
-                />
-            {/if}
-        {:else}
-            <div class="empty-state">
-                <p>Niestety, nie mamy w tej chwili gier pasujących do tego kryterium. Sprawdź ponownie za jakiś czas!</p>
-            </div>
-        {/each}
-    </div>
+	<h2>{sectionTitle}</h2>
+
+	<div class="grid">
+		{#each displayedGames as p (p.id)}
+			{#if !p.is_hidden || authStore.isAdmin}
+				<GameCard
+					game={p}
+					onAddToCart={handleAddToCart}
+					onToggleVisibility={handleToggleVisibility}
+					onEdit={handleEditProduct}
+					onDelete={handleDeleteProduct}
+					showAdminControls={authStore.isAdmin}
+					onClone={handleCloneProduct}
+				/>
+			{/if}
+		{:else}
+			<div class="empty-state">
+				<p>
+					Niestety, nie mamy w tej chwili gier pasujących do wybranych kryteriów wyszukiwania i
+					filtrów. Spróbuj zmienić parametry na pasku u góry!
+				</p>
+			</div>
+		{/each}
+	</div>
 </section>
 
 <style>
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
-    .catalog { margin-top: 20px; }
-    .catalog h2 { font-size: 2rem; border-bottom: 2px solid #3182ce; padding-bottom: 10px; margin-bottom: 25px; }
-    .empty-state { grid-column: 1 / -1; padding: 40px; text-align: center; background: #1a202c; border: 1px dashed #4a5568; border-radius: 8px; color: #a0aec0; font-size: 1.1rem; }
-</style>
+	.grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+		gap: 20px;
+	}
 
-{#if editingProduct}
-    <EditModal
-        product={editingProduct}
-        onSave={handleSaveEdit}
-        onCancel={() => editingProduct = null}
-    />
-{/if}
+	.catalog {
+		margin-top: 20px;
+	}
+
+	.catalog h2 {
+		font-size: 2rem;
+		border-bottom: 2px solid #3182ce;
+		padding-bottom: 10px;
+		margin-bottom: 25px;
+	}
+
+	.empty-state {
+		grid-column: 1 / -1;
+		padding: 40px;
+		text-align: center;
+		background: #1a202c;
+		border: 1px dashed #4a5568;
+		border-radius: 8px;
+		color: #a0aec0;
+		font-size: 1.1rem;
+	}
+</style>
