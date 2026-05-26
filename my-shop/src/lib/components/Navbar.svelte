@@ -3,19 +3,32 @@
 	import { page } from '$app/stores';
 	import { authStore, filterStore } from '$lib/store.svelte.js';
 
-	/** @type {{ cartCount: number }} */
-	let { cartCount = 0 } = $props();
+	/** @type {{ cartCount: number, categories?: any[] }} */
+	let { cartCount = 0, categories = [] } = $props();
 
 	let isMobileMenuOpen = $state(false);
-	let areFiltersVisible = $derived($page.url.pathname === '/gry');
+	let isCategoryMenuOpen = $state(false);
+	let areFiltersVisible = $derived(
+	$page.url.pathname === '/gry' || $page.url.pathname.startsWith('/gry/kategoria/')
+	);
 
 	function toggleMobileMenu() {
 		isMobileMenuOpen = !isMobileMenuOpen;
 	}
 
+	function toggleCategoryMenu() {
+		isCategoryMenuOpen = !isCategoryMenuOpen;
+	}
+
+	function closeMenus() {
+		isMobileMenuOpen = false;
+		isCategoryMenuOpen = false;
+	}
+
 	/** @param {string} targetId */
 	function scrollToSection(targetId) {
 		isMobileMenuOpen = false;
+		isCategoryMenuOpen = false;
 
 		const element = document.getElementById(targetId);
 
@@ -37,6 +50,12 @@
 	}
 </script>
 
+<svelte:window
+	onclick={() => {
+		isCategoryMenuOpen = false;
+	}}
+/>
+
 <nav class="navbar">
 	<div class="navbar-container">
 		<a href={resolve('/')} class="logo">
@@ -50,29 +69,56 @@
 
 		<ul class="nav-links {isMobileMenuOpen ? 'mobile-open' : ''}">
 			<li>
-				<a href={resolve('/gry')} onclick={() => (isMobileMenuOpen = false)}>
+				<a href={resolve('/gry')} onclick={closeMenus}>
 					Katalog Gier
 				</a>
 			</li>
 
+			<li class="category-menu">
+				<button
+					type="button"
+					class="category-toggle"
+					onclick={(e) => {
+						e.stopPropagation();
+						toggleCategoryMenu();
+					}}
+					aria-expanded={isCategoryMenuOpen}
+				>
+					Kategorie
+				</button>
+
+				{#if isCategoryMenuOpen}
+					<div class="category-dropdown">
+						{#each categories as category (category.id)}
+							<a
+								href={resolve('/gry/kategoria/[nazwa_kategorii]', {
+									nazwa_kategorii: encodeURIComponent(category.name)
+								})}
+								onclick={closeMenus}
+							>
+								{category.name}
+							</a>
+						{:else}
+							<span class="category-empty">Brak kategorii</span>
+						{/each}
+					</div>
+				{/if}
+			</li>
+
 			<li>
-				<a href={resolve('/gry?filter=nowosci')} onclick={() => (isMobileMenuOpen = false)}>
+				<a href={resolve('/gry?filter=nowosci')} onclick={closeMenus}>
 					Nowości
 				</a>
 			</li>
 
 			<li>
-				<a
-					href={resolve('/gry?filter=promocje')}
-					class="sale-link"
-					onclick={() => (isMobileMenuOpen = false)}
-				>
+				<a href={resolve('/gry?filter=promocje')} class="sale-link" onclick={closeMenus}>
 					% Promocje
 				</a>
 			</li>
 
 			<li>
-				<a href={resolve('/gry?filter=uzywane')} onclick={() => (isMobileMenuOpen = false)}>
+				<a href={resolve('/gry?filter=uzywane')} onclick={closeMenus}>
 					Używane
 				</a>
 			</li>
@@ -256,7 +302,8 @@
 		padding: 0;
 	}
 
-	.nav-links a {
+	.nav-links a,
+	.category-toggle {
 		text-decoration: none;
 		color: #b3b3b3;
 		font-weight: 600;
@@ -266,13 +313,63 @@
 		transition: color 0.3s;
 	}
 
-	.nav-links a:hover {
+	.category-toggle {
+		background: none;
+		border: none;
+		cursor: pointer;
+		padding: 0;
+		font-family: inherit;
+	}
+
+	.nav-links a:hover,
+	.category-toggle:hover {
 		color: #ffffff;
 		text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
 	}
 
 	.nav-links .sale-link {
 		color: #ff3366;
+	}
+
+	.category-menu {
+		position: relative;
+	}
+
+	.category-dropdown {
+		position: absolute;
+		top: calc(100% + 1rem);
+		left: 0;
+		min-width: 180px;
+		background: #14141d;
+		border: 1px solid #2a2a35;
+		border-radius: 8px;
+		padding: 0.5rem;
+		box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+		z-index: 1001;
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.category-dropdown a,
+	.category-empty {
+		color: #d7dde7;
+		padding: 0.7rem 0.8rem;
+		border-radius: 6px;
+		white-space: nowrap;
+		text-transform: none;
+		letter-spacing: 0;
+		font-size: 0.95rem;
+	}
+
+	.category-dropdown a:hover {
+		background: rgba(0, 255, 204, 0.12);
+		color: #00ffcc;
+		text-shadow: none;
+	}
+
+	.category-empty {
+		color: #718096;
 	}
 
 	.nav-actions {
@@ -454,6 +551,16 @@
 		.nav-links li {
 			text-align: center;
 			padding: 1rem 0;
+		}
+
+		.category-menu {
+			position: static;
+		}
+
+		.category-dropdown {
+			position: static;
+			width: min(320px, calc(100% - 2rem));
+			margin: 1rem auto 0;
 		}
 
 		.mobile-toggle {

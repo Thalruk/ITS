@@ -8,6 +8,7 @@
 	let product = $derived(data.product);
 	let currentUser = $derived(data.user || null);
 	let isAdmin = $derived(data.user?.role?.toLowerCase() === 'admin');
+    let quantity = $state(1);
 
 	async function handleAddToCart() {
 		if (!product) return;
@@ -17,7 +18,7 @@
             currentUser?.id,
             isAdmin,
             [],
-            1
+            quantity
         );
 
 		if (result?.error) {
@@ -86,10 +87,22 @@
                             </div>
                         </div>
                         
+                        <div class="quantity-row">
+                            <label for="product-quantity">Ilość:</label>
+                            <input
+                                id="product-quantity"
+                                type="number"
+                                min="1"
+                                max={product.stock_quantity}
+                                bind:value={quantity}
+                                disabled={product.stock_quantity <= 0 || isAdmin || !currentUser}
+                            />
+                        </div>
+
                         <button
                             class="cta-button primary"
                             onclick={handleAddToCart}
-                            disabled={product.stock_quantity <= 0}
+                            disabled={product.stock_quantity <= 0 || isAdmin || !currentUser}
                         >
                             {product.stock_quantity > 0 ? 'KUP TERAZ' : 'BRAK W MAGAZYNIE'}
                         </button>
@@ -266,6 +279,28 @@
         cursor: not-allowed;
         transform: none;
         box-shadow: none;
+    }
+
+    .quantity-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 16px 0;
+        color: #cbd5e0;
+    }
+
+    .quantity-row label {
+        font-weight: 700;
+    }
+
+    .quantity-row input {
+        width: 90px;
+        background: #2d3748;
+        color: #ffffff;
+        border: 1px solid #4a5568;
+        border-radius: 6px;
+        padding: 10px;
+        font-weight: 700;
     }
 
 </style>

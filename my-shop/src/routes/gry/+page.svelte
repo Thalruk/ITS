@@ -116,6 +116,7 @@
 {#if editingProduct}
 	<EditModal
 		product={editingProduct}
+		categories={data.categories || []}
 		onSave={handleSaveEdit}
 		onCancel={() => (editingProduct = null)}
 	/>

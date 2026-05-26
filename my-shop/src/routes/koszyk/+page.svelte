@@ -75,7 +75,7 @@
 
     const { data: c } = await supabase
       .from('cart_items')
-      .select('id, quantity, product_id, products(*)')
+      .select('id, quantity, product_id, products(*, categories(name))')
       .eq('user_id', currentUser.id)
       .order('id', { ascending: true });
 

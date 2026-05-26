@@ -63,8 +63,8 @@
         <a href={resolve('/products/details/[id]', { id: String(game.id) })} class="title-link">
             <h3>{game.name}</h3>
         </a>
-        {#if game.category}
-            <span class="category-tag">{game.category}</span>
+        {#if game.categories?.name || game.category}
+            <span class="category-tag">{game.categories?.name || game.category}</span>
         {/if}
     </div>
     

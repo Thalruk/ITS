@@ -85,13 +85,9 @@
     </div>
         <select bind:value={newCat}>
             <option value="">Gatunek...</option>
-            <option value="1">Horror</option>
-            <option value="2">FPS</option>
-            <option value="3">Sportowa</option>
-            <option value="4">Symulator</option>
-            <option value="5">RPG</option>
-            <option value="6">Strategia</option>
-            <option value="7">Akcja/Przygoda</option>
+            {#each data.categories || [] as category (category.id)}
+                <option value={String(category.id)}>{category.name}</option>
+            {/each}
         </select>
 
         <div class="checkbox-group">
