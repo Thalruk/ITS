@@ -1,11 +1,22 @@
 <script>
 	import { supabase } from '$lib/supabaseClient';
 	import { authStore } from '$lib/store.svelte.js';
-	import { onMount } from 'svelte';
+
+	/**
+	 * @typedef {Object} Review
+	 * @property {number | string} id
+	 * @property {number | string} product_id
+	 * @property {string} user_id
+	 * @property {number} rating
+	 * @property {string} comment
+	 * @property {string} created_at
+	 * @property {{ first_name?: string | null, last_name?: string | null } | null} profiles
+	 */
 
 	// Odbieramy ID gry jako prop w Svelte 5
 	let { productId } = $props();
 
+	/** @type {Review[]} */
 	let reviews = $state([]);
 	let hasBought = $state(false);
 	let isLoading = $state(true);
@@ -59,8 +70,8 @@
 			.eq('status', 'paid');
 
 		if (!error && data) {
-			hasBought = data.some((order) =>
-				order.order_items.some((item) => item.product_id === productId)
+			hasBought = data.some((/** @type {any} */ order) =>
+				order.order_items.some((/** @type {any} */ item) => item.product_id === productId)
 			);
 		}
 	}
