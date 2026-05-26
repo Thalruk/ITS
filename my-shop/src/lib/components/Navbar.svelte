@@ -8,7 +8,9 @@
 
 	let isMobileMenuOpen = $state(false);
 	let isCategoryMenuOpen = $state(false);
-	let areFiltersVisible = $derived($page.url.pathname === '/gry');
+	let areFiltersVisible = $derived(
+	$page.url.pathname === '/gry' || $page.url.pathname.startsWith('/gry/kategoria/')
+	);
 
 	function toggleMobileMenu() {
 		isMobileMenuOpen = !isMobileMenuOpen;
@@ -48,6 +50,12 @@
 	}
 </script>
 
+<svelte:window
+	onclick={() => {
+		isCategoryMenuOpen = false;
+	}}
+/>
+
 <nav class="navbar">
 	<div class="navbar-container">
 		<a href={resolve('/')} class="logo">
@@ -70,7 +78,10 @@
 				<button
 					type="button"
 					class="category-toggle"
-					onclick={toggleCategoryMenu}
+					onclick={(e) => {
+						e.stopPropagation();
+						toggleCategoryMenu();
+					}}
 					aria-expanded={isCategoryMenuOpen}
 				>
 					Kategorie

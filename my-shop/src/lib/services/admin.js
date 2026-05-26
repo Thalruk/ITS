@@ -292,7 +292,7 @@ export async function rejectReturn(order) {
 
     const { error } = await supabase
         .from('orders')
-        .update({ status: 'paid' })
+        .update({ status: 'return_rejected' })
         .eq('id', order.id);
 
     if (error) {

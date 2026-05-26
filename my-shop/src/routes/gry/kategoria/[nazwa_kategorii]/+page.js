@@ -1,37 +1,45 @@
 import { supabase } from '$lib/supabaseClient';
 
 export async function load({ params }) {
-    const categoryName = params.nazwa_kategorii;
+	const categoryName = params.nazwa_kategorii;
 
-    const { data: category, error: categoryError } = await supabase
-        .from('categories')
-        .select('id, name')
-        .eq('name', categoryName)
-        .single();
+	const { data: category, error: categoryError } = await supabase
+		.from('categories')
+		.select('id, name')
+		.eq('name', categoryName)
+		.single();
 
-    if (categoryError || !category) {
-        console.error('Blad pobierania kategorii:', categoryError);
-        return {
-            categoryName,
-            products: []
-        };
-    }
+	const { data: categories } = await supabase
+		.from('categories')
+		.select('id, name')
+		.order('name', { ascending: true });
 
-    const { data: products, error } = await supabase
-        .from('products')
-        .select('*, categories(name)')
-        .eq('category', category.id);
+	if (categoryError || !category) {
+		console.error('Błąd pobierania kategorii:', categoryError);
+		return {
+			categoryName,
+			categories: categories || [],
+			products: []
+		};
+	}
 
-    if (error) {
-        console.error('Blad pobierania gier z kategorii:', error);
-        return {
-            categoryName: category.name,
-            products: []
-        };
-    }
+	const { data: products, error } = await supabase
+		.from('products')
+		.select('*, categories(name)')
+		.eq('category', category.id);
 
-    return {
-        categoryName: category.name,
-        products: products || []
-    };
+	if (error) {
+		console.error('Błąd pobierania gier z kategorii:', error);
+		return {
+			categoryName: category.name,
+			categories: categories || [],
+			products: []
+		};
+	}
+
+	return {
+		categoryName: category.name,
+		categories: categories || [],
+		products: products || []
+	};
 }

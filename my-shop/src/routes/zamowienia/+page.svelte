@@ -88,7 +88,9 @@
                                     ? 'Oczekuje na zatwierdzenie zwrotu'
                                     : order.status === 'returned'
                                         ? 'Zwrócone'
-                                        : order.status}
+                                            : order.status === 'return_rejected'
+				                            ? 'Zwrot odrzucony'
+                                            : order.status}
                         </span>
                     </div>
                     
@@ -116,7 +118,7 @@
 
                     {#if order.status === 'paid'}
                         <div class="order-actions">
-                            <button class="return-btn" onclick={() => handleReturn(order)}>Zwróć zamówienie 🔄</button>
+                            <button class="return-btn" onclick={() => handleReturn(order)}>Zwróć zamówienie</button>
                         </div>
                     {/if}
                 </div>
