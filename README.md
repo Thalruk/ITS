@@ -53,6 +53,7 @@ Struktura plików została podzielona zgodnie z logiką SvelteKit na kod współ
 src/
 ├── lib/                                # Kod współdzielony w całej aplikacji (Alias: $lib)
 │   ├── components/                     # Reużywalne komponenty wizualne (SFC)
+|   |   |── ProductReviews.svelte       # Dodawanie recenzji do bazy danych
 │   │   ├── AdminPanel.svelte           # Formularz dodawania nowych gier do Supabase
 │   │   ├── CheckoutForm.svelte         # Formularz finalizacji zamówienia
 │   │   ├── EditModal.svelte            # Wyskakujące okno do edycji gier przez Admina
