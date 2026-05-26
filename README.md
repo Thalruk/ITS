@@ -47,46 +47,70 @@ Poniżej znajduje się opis aktualnej architektury projektu, aby każdy wiedzia�
 
 ## 📁 Architektura Projektu
 
-Struktura plików została podzielona zgodnie z najlepszymi praktykami SvelteKit na logikę globalną (`src/lib/`) oraz widoki podstron (`src/routes/`).
+Struktura plików została podzielona zgodnie z logiką SvelteKit na kod współdzielony (`src/lib/`) oraz widoki podstron (`src/routes/`).
 
-```text
+```txt
 src/
-├── lib/                        # Kod współdzielony w całej aplikacji (Alias: $lib)
-│   ├── components/             # Reużywalne komponenty wizualne (SFC)
-│   │   ├── AdminPanel.svelte   # Formularz dodawania nowych gier do Supabase
-│   │   ├── EditModal.svelte    # Wyskakujące okno do edycji gier przez Admina
-│   │   ├── Footer.svelte       # Globalna stopka z linkami (Regulamin, Kontakt)
-│   │   ├── GameCard.svelte     # Karta pojedynczej gry (wygląd, logiki akcji)
-│   │   └── Navbar.svelte       # Główna, pływająca nawigacja z licznikiem koszyka
+├── lib/                                # Kod współdzielony w całej aplikacji (Alias: $lib)
+│   ├── components/                     # Reużywalne komponenty wizualne (SFC)
+│   │   ├── AdminPanel.svelte           # Formularz dodawania nowych gier do Supabase
+│   │   ├── CheckoutForm.svelte         # Formularz finalizacji zamówienia
+│   │   ├── EditModal.svelte            # Wyskakujące okno do edycji gier przez Admina
+│   │   ├── Footer.svelte               # Globalna stopka z linkami (Regulamin, Kontakt)
+│   │   ├── GameCard.svelte             # Karta pojedynczej gry (wygląd, logiki akcji)
+│   │   └── Navbar.svelte               # Główna, pływająca nawigacja z licznikiem koszyka, filtrowaniem i kategoriami
 │   │
-│   ├── services/               # Serwisy (zewnętrzne API, logika biznesowa backendu)
-│   ├── index.ts                # Główny plik eksportujący moduły z folderu lib
-│   ├── store.svelte.js         # GLOBALNY STAN APLIKACJI (Svelte 5) - user i koszyk
-│   └── supabaseClient.js       # Inicjalizacja klienta bazy danych Supabase
+│   ├── services/                       # Serwisy (zewnętrzne API, logika biznesowa backendu)
+│   │   ├── admin.js                    # Logika akcji administratora (produkty, zwroty, zapytania)
+│   │   ├── auth.js                     # Logika pomocnicza związana z autoryzacją
+│   │   ├── cart.js                     # Logika koszyka i dodawania produktów
+│   │   └── orders.js                   # Logika zamówień, historii zamówień i zwrotów
+│   │
+│   ├── index.ts                        # Główny plik eksportujący moduły z folderu lib
+│   ├── store.svelte.js                 # GLOBALNY STAN APLIKACJI (Svelte 5) - user, koszyk i filtry
+│   └── supabaseClient.js               # Inicjalizacja klienta bazy danych Supabase
 │
-└── routes/                     # File-based routing (Każdy folder to adres URL)
-    ├── auth/                   # Moduł autoryzacji użytkowników
-    │   ├── login/              # Podstrona logowania (/auth/login)
-    │   │   ├── +page.server.ts # Logika backendowa (np. weryfikacja ciasteczek sesji)
-    │   │   └── +page.svelte    # Formularz wizualny logowania
-    │   └── register/           # Podstrona rejestracji (/auth/register)
-    │       ├── +page.server.ts # Logika backendowa (np. tworzenie konta w bazie)
-    │       └── +page.svelte    # Formularz wizualny zakładania konta
-    │
-    ├── gry/                    # Podstrona: /gry (Główny katalog)
-    │   ├── +page.js            # Pobieranie wszystkich gier z bazy
-    │   └── +page.svelte        # Siatka gier i wywołania komponentów Admin/Karty
-    │
-    ├── koszyk/                 # Podstrona koszyka klienta (/koszyk)
-    │   ├── +page.js            # Loader dla widoku koszyka
-    │   ├── +page.svelte        # Widok podsumowania zamówienia
-    │   └── koszyk.css          # Style CSS dedykowane wyłącznie dla koszyka
-    │
-    ├── +layout.js              # Główny loader strony (pobiera kategorie do menu)
-    ├── +layout.svelte          # Główna rama aplikacji (Navbar + zawartość + Footer)
-    ├── +page.js                # Loader dla strony głównej (pobiera gry z bazy)
-    ├── +page.server.ts         # Globalny kod backendowy dla strony głównej
-    ├── +page.svelte            # Strona główna (/): Hero banner i infinite scroll
-    ├── layout.css              # Globalne style dla całej aplikacji
-    └── page.css
-└── static/assets               # Pliki statyczne (np. globalne grafiki, ikony, fonty)
+├── routes/                             # File-based routing (każdy folder to adres URL)
+│   ├── auth/                           # Moduł autoryzacji użytkowników
+│   │   ├── login/                      # Podstrona logowania (/auth/login)
+│   │   │   ├── +page.server.ts         # Logika backendowa logowania
+│   │   │   └── +page.svelte            # Formularz wizualny logowania
+│   │   └── register/                   # Podstrona rejestracji (/auth/register)
+│   │       ├── +page.server.ts         # Logika backendowa tworzenia konta w bazie
+│   │       └── +page.svelte            # Formularz wizualny zakładania konta
+│   │
+│   ├── admin/                          # Podstrona panelu administratora (/admin)
+│   │   ├── +page.js                    # Loader danych dla panelu administratora
+│   │   └── +page.svelte                # Panel administratora i zarządzanie sklepem
+│   │
+│   ├── gry/                            # Podstrona: /gry (Główny katalog)
+│   │   ├── kategoria/
+│   │   │   └── [nazwa_kategorii]/      # Dynamiczna podstrona kategorii (/gry/kategoria/...)
+│   │   │       ├── +page.js            # Pobieranie gier z wybranej kategorii
+│   │   │       └── +page.svelte        # Widok produktów z wybranej kategorii
+│   │   ├── +page.js                    # Pobieranie wszystkich gier z bazy
+│   │   └── +page.svelte                # Siatka gier i wywołania komponentów Admin/Karty
+│   │
+│   ├── koszyk/                         # Podstrona koszyka klienta (/koszyk)
+│   │   ├── +page.js                    # Loader dla widoku koszyka
+│   │   ├── +page.svelte                # Widok koszyka i podsumowania zamówienia
+│   │   └── koszyk.css                  # Style CSS dedykowane wyłącznie dla koszyka
+│   │
+│   ├── products/
+│   │   ├── details/
+│   │   │   └── [id]/                   # Dynamiczny widok pojedynczego produktu
+│   │   │       ├── +page.js            # Pobieranie danych pojedynczej gry
+│   │   │       └── +page.svelte        # Szczegóły produktu i dodawanie do koszyka
+│   │   └── products.svelte             # Pomocniczy widok produktów
+│   │
+│   ├── zamowienia/                     # Podstrona panelu klienta (/zamowienia)
+│   │   └── +page.svelte                # Historia zamówień, statusy i zgłaszanie zwrotów
+│   │
+│   ├── +layout.server.ts               # Globalny loader layoutu (pobiera użytkownika i kategorie do menu)
+│   ├── +layout.svelte                  # Główna rama aplikacji (Navbar + zawartość + Footer)
+│   ├── +page.server.ts                 # Globalny kod backendowy dla strony głównej
+│   ├── +page.svelte                    # Strona główna (/): Hero banner i sekcje produktów
+│   ├── layout.css                      # Globalne style dla układu aplikacji
+│   └── page.css                        # Style strony głównej
+│
+└── assets/                             # Pliki statyczne projektu (np. grafiki, ikony, fonty)
