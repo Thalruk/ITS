@@ -1,4 +1,5 @@
 <script>
+    import ProductReviews from '$lib/components/ProductReviews.svelte';
 	import { resolve } from '$app/paths';
 	import { loadCartGlobal } from '$lib/store.svelte.js';
 	import { addToCart } from '$lib/services/cart.js';
@@ -146,6 +147,9 @@
                         </ol>
                     </div>
                 </div>
+                {#if product.id}
+					<ProductReviews productId={product.id} />
+				{/if}
             </section>
         {:else}
             <div class="error-view">
