@@ -60,7 +60,7 @@
 	<div class="navbar-container">
 		<a href={resolve('/')} class="logo">
 			<img
-				src="https://twojsklep.pl/assets/textures/ui/logo-gaming.png"
+				src="/assets/logo-gaming.png"
 				alt="Logo Sklepu"
 				class="logo-img"
 			/>
@@ -272,22 +272,27 @@
 	.logo {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: 0.65rem;
 		text-decoration: none;
 	}
 
 	.logo-img {
-		width: 40px;
-		height: 40px;
+		width: 42px;
+		height: 42px;
 		object-fit: contain;
+		display: block;
+		transform: translateY(2px);
 	}
 
 	.logo-text {
+		display: flex;
+		align-items: center;
 		font-size: 1.8rem;
 		font-weight: 800;
 		color: #ffffff;
 		text-transform: uppercase;
 		letter-spacing: 1px;
+		line-height: 1;
 	}
 
 	.logo-text .highlight {
