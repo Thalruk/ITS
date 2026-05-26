@@ -158,7 +158,7 @@
 					</div>
 				{:else}
 					<div class="status-box info">
-						<p>💡 Zaloguj się na konto klienta, aby sprawdzić możliwość wystawienia oceny.</p>
+						<p>💡 Zaloguj się na konto klienta, aby wystawić ocenę.</p>
 					</div>
 				{/if}
 			</div>
