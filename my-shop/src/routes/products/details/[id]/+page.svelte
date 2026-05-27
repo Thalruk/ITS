@@ -66,7 +66,10 @@
                     <h1>{product.name}</h1>
                     
                     <div class="quick-meta">
-                        <span class="tag">🎮 {product.category || 'Gra'}</span>
+                        {#if product.categories?.name}
+                            <span class="tag">🎮 {product.categories.name}</span>
+                        {/if}
+                        
                         <span class="tag">💻 {product.platform || 'Brak platformy'}</span>
                         <span class="tag">🌍 {product.region || 'Global'}</span>
                         <span class="tag stock-tag">📦 Dostępne sztuki: {product.stock_quantity}</span>
