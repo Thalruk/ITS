@@ -165,10 +165,9 @@
 </div>
 
 <style>
-    /* BAZA ZGODNA ZE STRONĄ GŁÓWNĄ - Przywrócono Ciemne Tło */
     .page-wrapper {
-        background-color: #0f0f14; /* Ciemny Cyberpunkowy mrok powrócił! */
-        min-height: 100vh;         /* Upewniamy się, że tło wypełnia cały ekran */
+        background-color: #0f0f14;
+        min-height: 100vh;         /* Tło wypełnia cały ekran */
         color: #ffffff; 
         font-family: 'Inter', sans-serif; 
     }
@@ -205,7 +204,7 @@
 
     .stock-tag { color: #48bb78; font-weight: 800; }
 
-    /* KARTA ZAKUPU ZGODNA Z UI */
+    /* KARTA ZAKUPU */
     .buy-card { background: #1a1a24; padding: 30px; border-radius: 8px; border: 1px solid #2a2a35; }
     .price-row { margin-bottom: 25px; }
     .price-stack { display: flex; flex-direction: column; }
@@ -248,7 +247,7 @@
         color: #ffffff; 
         margin-top: 0; 
         margin-bottom: 1.5rem; 
-        border-left: 4px solid #00ffcc; /* Neonowa kreska z motywu strony głównej */
+        border-left: 4px solid #00ffcc;
         padding-left: 15px; 
         text-transform: uppercase; 
     }

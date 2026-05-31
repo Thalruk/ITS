@@ -67,8 +67,9 @@
     });
 
     // --- LOGIKA PROFILU ---
+    /** @param {string} userId */
     async function loadProfile(userId) {
-        const { data, error } = await supabase
+        const { data } = await supabase
             .from('profiles')
             .select('first_name, last_name, avatar_url')
             .eq('id', userId)
@@ -104,8 +105,11 @@
     }
 
     // --- LOGIKA WGRYWANIA ZDJĘCIA ---
+    /** @param {Event} event */
     async function uploadAvatar(event) {
-        const file = event.target.files[0];
+        const input = /** @type {HTMLInputElement} */ (event.target);
+        const file = input.files?.[0];
+
         if (!file || !authStore.currentUser) return;
 
         uploadingAvatar = true;
@@ -176,9 +180,9 @@
     }
 
     // --- LOGIKA ADRESU ---
+    /** @param {string} userId */
     async function loadAddress(userId) {
-        // Pobieramy domyślny adres klienta
-        const { data, error } = await supabase
+        const { data } = await supabase
             .from('addresses')
             .select('*')
             .eq('user_id', userId)
@@ -239,6 +243,7 @@
     }
 
     // --- LOGIKA ZAMÓWIEŃ ---
+    /** @param {any} order */
     async function handleReturn(order) {
         const success = await returnOrder(order);
         if (success && authStore.currentUser) {
@@ -448,7 +453,7 @@
                                 <span class="order-total">💰 {order.total_amount.toFixed(2)} zł</span>
                             </div>
                             <span class="status-badge {order.status}">
-                                {order.status === 'paid' ? 'Opłacone' : order.status === 'return_requested' ? 'Oczekuje na zwrot' : order.status === 'returned' ? 'Zwrócone' : order.status === 'return_rejected' ? 'Odrzucone' : order.status}
+                                {order.status === 'paid' ? 'Opłacone' : order.status === 'return_requested' ? 'Oczekuje na zwrot' : order.status === 'returned' ? 'Zwrócone' : order.status === 'return_rejected' ? 'Zwrot odrzucony' : order.status}
                             </span>
                         </div>
                         
