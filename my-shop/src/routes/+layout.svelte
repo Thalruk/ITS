@@ -6,10 +6,12 @@
     import { supabase } from '$lib/supabaseClient';
     import { invalidateAll } from '$app/navigation';
     import { base, resolve } from '$app/paths';
+    import { page } from '$app/state';
     import { authStore, cartStore, loadCartGlobal } from '$lib/store.svelte.js';
     import { untrack } from 'svelte';
 
     let { data, children } = $props();
+    let isPuzzlePage = $derived(page.route.id === '/love4games' || page.route.id === '/MessiOrRonaldo');
 
     // Reaktywna synchronizacja stanu sklepu
     $effect(() => {
@@ -56,41 +58,45 @@
     }
 </script>
 
-<div class="dev-bar">
-    <span>
-        Widok:
-        <strong>
-            {!authStore.currentUser ? 'Niezalogowany Gość' : authStore.isAdmin ? 'Admin' : 'Klient'}
-        </strong>
-
-        {#if authStore.currentUser}
-            <small style="margin-left: 10px; opacity: 0.8;">
-                ({authStore.currentUser.email})
-            </small>
-        {/if}
-
-        <small style="margin-left: 10px; color: #a0aec0;">
-            | Rola zweryfikowana przez JWT: {data.user?.role || 'Zwykły użytkownik'}
-        </small>
-    </span>
-
-    <div class="top-auth-actions">
-        {#if !authStore.currentUser}
-            <a href={resolve('/auth/login')} class="top-auth-btn">Zaloguj</a>
-            <a href={resolve('/auth/register')} class="top-auth-btn register-btn">Rejestracja</a>
-        {:else}
-            <button onclick={() => logout()} class="top-auth-btn logout-btn">Wyloguj</button>
-        {/if}
-    </div>
-</div>
-
-<Navbar cartCount={cartStore.items.length} categories={data.categories || []} />
-
-<main class="content-wrapper">
+{#if isPuzzlePage}
     {@render children()}
-</main>
+{:else}
+    <div class="dev-bar">
+        <span>
+            Widok:
+            <strong>
+                {!authStore.currentUser ? 'Niezalogowany Gość' : authStore.isAdmin ? 'Admin' : 'Klient'}
+            </strong>
 
-<Footer />
+            {#if authStore.currentUser}
+                <small style="margin-left: 10px; opacity: 0.8;">
+                    ({authStore.currentUser.email})
+                </small>
+            {/if}
+
+            <small style="margin-left: 10px; color: #a0aec0;">
+                | Rola zweryfikowana przez JWT: {data.user?.role || 'Zwykły użytkownik'}
+            </small>
+        </span>
+
+        <div class="top-auth-actions">
+            {#if !authStore.currentUser}
+                <a href={resolve('/auth/login')} class="top-auth-btn">Zaloguj</a>
+                <a href={resolve('/auth/register')} class="top-auth-btn register-btn">Rejestracja</a>
+            {:else}
+                <button onclick={() => logout()} class="top-auth-btn logout-btn">Wyloguj</button>
+            {/if}
+        </div>
+    </div>
+
+    <Navbar cartCount={cartStore.items.length} categories={data.categories || []} />
+
+    <main class="content-wrapper">
+        {@render children()}
+    </main>
+
+    <Footer />
+{/if}
 
 <style>
     :global(html) {
