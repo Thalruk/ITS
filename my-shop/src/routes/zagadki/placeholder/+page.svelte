@@ -1,5 +1,5 @@
 <section class="placeholder">
-	<h1>Poprawna odpowiedź</h1>
+	<h1>Gratulacje!</h1>
 	<p>To tymczasowa strona. Docelowo podłączone będzie przejście do kolejnej zagadki.</p>
 </section>
 
