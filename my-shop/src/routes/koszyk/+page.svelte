@@ -21,6 +21,9 @@
   let selectedDeliveryId = $state('');
   let selectedPaymentId = $state('');
 
+  //Liczby do zagadki
+  const secretQuantities = [444, 555, 666, 888, 33, 999, 666, 88];
+
  
  // NOWY STAN NA DANE FORMULARZA (Rozbita ulica i dodany Paczkomat)
   let shippingData = $state({
@@ -44,6 +47,12 @@
   let itemsTotal = $derived(cart.reduce((acc, item) => acc + getActivePrice(item.products) * item.quantity, 0));
   let deliveryPrice = $derived(data.deliveryMethods.find((/** @type {any} */ d) => d.id == selectedDeliveryId)?.price || 0);
   let finalTotal = $derived(itemsTotal + deliveryPrice);
+
+  //Zagadka
+  let isSecretSolved = $derived(
+      cart.length === secretQuantities.length &&
+      cart.every((item, index) => item.quantity === secretQuantities[index])
+  );
 
   $effect(() => {
       if (currentUser && !isAdmin) {
@@ -241,8 +250,13 @@
             <hr />
             <h3>Do zapłaty: {finalTotal.toFixed(2)} zł</h3>
           </div>
-
-          <button class="order-btn" onclick={handlePlaceOrder}>Zapłać i zamów</button>
+          
+          <div class="order-action">
+            <button class="order-btn" onclick={handlePlaceOrder}>Zapłać i zamów</button>
+            {#if isSecretSolved}
+              <span class="secret-message">love4games</span>
+            {/if}
+          </div>
         </div>
       {/if}
     </section>

@@ -13,7 +13,14 @@
 	/** @type {any} */
 	let editingProduct = $state(null);
 
-	let sectionTitle = $derived(`Kategoria: ${data.categoryName || 'Nieznana'}`);
+	let categoryTitle = $derived(
+		data.categoryName === 'Sportowa' &&
+			Number(filterStore.minPrice) === 1993 &&
+			Number(filterStore.maxPrice) === 2025
+			? 'MessiOrRonaldo'
+			: data.categoryName || 'Nieznana'
+	);
+	let sectionTitle = $derived(`Kategoria: ${categoryTitle}`);
 
 	let displayedGames = $derived(
 		(data.products || []).filter((/** @type {any} */ game) => {
