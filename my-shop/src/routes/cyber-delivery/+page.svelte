@@ -1,11 +1,13 @@
 <div class="puzzle-page">
 	<div class="hint-card">
-		<h2>Zagadka 1: Kurier Przyszłości 🤖</h2>
+		<h2>Modyfikacja sieci Arasaka 🌐</h2>
 		<p class="hint-text">
-			Podczas testowania systemu wysyłek międzynarodowych, deweloperzy zaimplementowali ukrytą strefę dostaw dla fikcyjnych metropolii. 
+			Udało Ci się włamać do głównego węzła, ale protokół dostawy jest zablokowany. 
+			Przechwyciliśmy informację, że deweloperzy zostawili ukrytą lukę w kodzie jednego z produktów.
 			<br><br>
-			Przejdź do swojego <strong>Koszyka</strong> i spróbuj zmienić <strong>Miasto</strong> dostawy na stolicę korporacyjnego świata z gry <em>Cyberpunk 2077</em>. 
-			Gdy to zrobisz, spójrz uważnie na dół podsumowania zamówienia.
+			<span style="color: #00ffcc; font-weight: bold;">Twoje zadanie:</span> 
+			Przejdź do katalogu gier, odszukaj kartę gry <strong>Cyberpunk 2077</strong> i wejdź w jej szczegóły. 
+			Ktoś wstrzyknął tam tajny panel sieciowy z dalszymi instrukcjami.
 		</p>
 	</div>
 </div>
@@ -29,6 +31,6 @@
 		line-height: 1.6;
 		box-shadow: 0 8px 30px rgba(0,0,0,0.6);
 	}
-	h2 { color: #00ffcc; margin-top: 0; font-size: 1.8rem; text-transform: uppercase; }
+	h2 { color: #ffe600; margin-top: 0; font-size: 1.8rem; text-transform: uppercase; text-shadow: 0 0 10px rgba(255, 230, 0, 0.3); }
 	.hint-text { color: #cbd5e0; font-size: 1.05rem; }
 </style>

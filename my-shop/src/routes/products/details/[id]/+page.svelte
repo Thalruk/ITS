@@ -150,6 +150,18 @@
                         </ol>
                     </div>
                 </div>
+
+                {#if product.name.toLowerCase().includes('cyberpunk')}
+					<div class="detail-block" style="border: 2px solid #ffe600; background: rgba(255, 230, 0, 0.03); border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+						<h2 style="color: #ffe600; border-left: 4px solid #ffe600; margin: 0 0 10px 0; font-family: monospace;">⚠️ DETEKCJA WŁAMANIA SIECIOWEGO</h2>
+						<p style="color: #e2e8f0; margin: 0; line-height: 1.6; font-size: 0.95rem;">
+							Wykryto aktywne połączenie z serwerem zewnętrznym. Aby wygenerować klucz autoryzacji sieciowej, 
+							dodaj ten produkt do <strong>Koszyka</strong>, przejdź do realizacji zamówienia i zmień miasto dostawy 
+							na stolicę korporacyjnego świata: <strong style="color: #ffe600; text-transform: uppercase;">Night City</strong>.
+						</p>
+					</div>
+				{/if}
+                
                 {#if product.id}
 					<ProductReviews productId={product.id} />
 				{/if}
