@@ -1,13 +1,35 @@
 <script>
     import { resolve } from '$app/paths';
     import './page.css'; 
+    import { secretGameStore } from '$lib/secretStore.svelte.js';
+    import { riddlesConfig } from '$lib/riddlesConfig.js';
+
+    /** * Funkcja sprawdzająca, czy dla danej gry promocja powinna być widoczna na ekranie
+     * @param {any} game - Obiekt gry pobrany z bazy Supabase
+     * @returns {boolean}
+     */
+    function isPromoActive(game) {
+        const hasPromoPrice = game.promo_price > 0 && game.promo_price < game.price;
+        if (!hasPromoPrice) return false;
+
+        // Szukamy czy ta konkretna gra z Supabase jest przypisana do jakiejś zagadki
+        const riddle = riddlesConfig.find(r => r.targetProductId === game.id);
+        
+        // Jeśli gra NIE jest przypisana do żadnej zagadki, to jest to zwykła, 
+        // publiczna promocja sklepu – wyświetlamy ją zawsze!
+        if (!riddle) return true;
+
+        // Jeśli gra JEST przypisana do zagadki, promocja aktywuje się TYLKO po rozwiązaniu zadania
+        return secretGameStore.solvedPages.includes(riddle.pageName);
+    }
 
     /** @type {{ data: any }} */
     let { data } = $props();
 
     // FILTROWANIE SYSTEMOWE NA BAZIE DANYCH Z SUPABASE
     let newGames = $derived(data.products?.filter((/** @type {any} */ p) => p.is_new === true) || []);
-    let promoGames = $derived(data.products?.filter((/** @type {any} */ p) => p.promo_price > 0 && p.promo_price < p.price) || []);
+    // let promoGames = $derived(data.products?.filter((/** @type {any} */ p) => p.promo_price > 0 && p.promo_price < p.price) || []);
+    let promoGames = $derived(data.products?.filter((/** @type {any} */ p) => isPromoActive(p)) || []);
     let usedGames = $derived(data.products?.filter((/** @type {any} */ p) => p.is_used === true) || []);
     
     /** * Funkcja gwarantująca, że pasek zawsze będzie miał dokładnie 20 kafelków.
@@ -45,6 +67,19 @@
         </div>
     </section>
 
+    {#if !secretGameStore.konamiActivated}
+        <div class="secret-info-box">
+            <div class="secret-info-content">
+                <h3>🕵️‍♂️ WYKRYTO ANOMALIE PROMOCYJNE W SKLEPIE</h3>
+                <p>
+                    W systemie dystrybucji wykryto 12 zabezpieczonych sektorów promocyjnych. 
+                    Rozwiązanie ukrytych zagadek aktywuje permanentne zniżki na wybrane gry. 
+                    Aby załadować moduł deszyfrujący, wprowadź na klawiaturze tradycyjną kombinację klawiszy retro-gracza (10 kroków).
+                </p>
+            </div>
+        </div>
+    {/if}
+
     <div class="sliders-section">
         
         <section class="game-slider-row">
@@ -57,7 +92,7 @@
                         {#each prepareMarqueeItems(newGames) as game}
                             <a href={resolve('/products/details/[id]', { id: String(game.id) })} class="slider-card">
                                 <div class="badges">
-                                    {#if game.promo_price > 0 && game.promo_price < game.price}
+                                    {#if isPromoActive(game)}
                                         <span class="badge sale">PROMO</span>
                                     {/if}
                                     {#if game.is_new}
@@ -70,7 +105,7 @@
                                 <img src={getAbsoluteTexturePath(game.image_url)} alt={game.name} />
                                 <h4>{game.name}</h4>
                                 <div class="price-section">
-                                    {#if game.promo_price > 0 && game.promo_price < game.price}
+                                    {#if isPromoActive(game)}
                                         <span class="price-tag old-price">{game.price} zł</span>
                                         <span class="price-tag new-price">{game.promo_price} zł</span>
                                     {:else}
@@ -94,7 +129,7 @@
                         {#each prepareMarqueeItems(promoGames) as game}
                             <a href={resolve('/products/details/[id]', { id: String(game.id) })} class="slider-card sale">
                                 <div class="badges">
-                                    {#if game.promo_price > 0 && game.promo_price < game.price}
+                                    {#if isPromoActive(game)}
                                         <span class="badge sale">PROMO</span>
                                     {/if}
                                     {#if game.is_new}
@@ -127,7 +162,7 @@
                         {#each prepareMarqueeItems(usedGames) as game}
                             <a href={resolve('/products/details/[id]', { id: String(game.id) })} class="slider-card used">
                                 <div class="badges">
-                                    {#if game.promo_price > 0 && game.promo_price < game.price}
+                                    {#if isPromoActive(game)}
                                         <span class="badge sale">PROMO</span>
                                     {/if}
                                     {#if game.is_new}
