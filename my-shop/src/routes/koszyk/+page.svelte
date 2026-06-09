@@ -295,6 +295,13 @@ $effect(() => {
             <hr />
             <h3>Do zapłaty: {finalTotal.toFixed(2)} zł</h3>
           </div>
+
+          <button class="order-btn" onclick={handlePlaceOrder}>Zapłać i zamów</button>
+          {#if shippingData.city.toLowerCase().trim() === 'night city'}
+            <span class="secret-message" style="color: #ff0055; margin-top: 15px; display: block; text-align: center; font-weight: bold; font-size: 1.1rem; border: 1px dashed #ff0055; padding: 8px; border-radius: 6px; background: rgba(255, 0, 85, 0.05);">
+              Kod promocyjny: Chooh2Collector
+            </span>
+          {/if}
           
           <div class="order-action">
             <button class="order-btn" onclick={handlePlaceOrder}>Zapłać i zamów</button>

@@ -91,7 +91,15 @@
 
                 <div class="product-main-info">
                     <h1>{product.name}</h1>
-                    
+                    {#if product.name.toLowerCase().includes('cyberpunk')}
+                        
+                            <a href="/cyber-delivery" class="title-secret-link cyberpunk-hover">Niezapomniana przygoda</a> 
+                    {/if}
+                    {#if product.id == 62}
+                        
+                           <a href="/Chooh2Collector" class="title-secret-link gta-hover">Gra na którą wszyscy czekali</a> 
+                    {/if}
+   
                     <div class="quick-meta">
                         {#if product.categories?.name}
                             <span class="tag">🎮 {product.categories.name}</span>
@@ -143,6 +151,14 @@
                                 ? '✅ Dostępne - natychmiast na e-mail'
                                 : '❌ Produkt chwilowo niedostępny'}
                         </p>
+                        {#if product.name.toUpperCase().includes('GRAND THEFT AUTO VI') || product.name.toUpperCase().includes('GTA VI') || product.id == 62}
+							{#if quantity === 6}
+								<div style="margin-top: 15px; background: rgba(0, 255, 204, 0.05); border: 1px dashed #00ffcc; padding: 10px; border-radius: 6px; text-align: center;">
+									<strong style="color: #00ffcc; font-size: 1rem; display: block;">🔓 POŁĄCZENIE SZYFROWANE ZAKOŃCZONE SUCCESS</strong>
+									<span style="color: #ffffff; font-size: 0.9rem;">Kod promocyjny: ViceCityEasterEgg2026</span>
+								</div>
+							{/if}
+						{/if}
                     </div>
                 </div>
             </section>
@@ -177,6 +193,18 @@
                         </ol>
                     </div>
                 </div>
+
+                {#if product.name.toLowerCase().includes('cyberpunk')}
+					<div class="detail-block" style="border: 2px solid #ffe600; background: rgba(255, 230, 0, 0.03); border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+						<h2 style="color: #ffe600; border-left: 4px solid #ffe600; margin: 0 0 10px 0; font-family: monospace;">⚠️ DETEKCJA WŁAMANIA SIECIOWEGO</h2>
+						<p style="color: #e2e8f0; margin: 0; line-height: 1.6; font-size: 0.95rem;">
+							Wykryto aktywne połączenie z serwerem zewnętrznym. Aby wygenerować klucz autoryzacji sieciowej, 
+							dodaj ten produkt do <strong>Koszyka</strong>, przejdź do realizacji zamówienia i zmień miasto dostawy 
+							na stolicę korporacyjnego świata <strong style="color: #ffe600; text-transform: uppercase;">Night City</strong>.
+						</p>
+					</div>
+				{/if}
+
                 {#if product.id}
 					<ProductReviews productId={product.id} />
 				{/if}
