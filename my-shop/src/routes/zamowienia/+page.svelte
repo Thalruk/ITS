@@ -37,6 +37,9 @@
         country: 'Polska'
     });
 
+    // --- ZAGADKA 8: STAN ---
+    let sudoModeActive = $state(false);
+
     /** @type {string | null} */
     let loadedUserId = $state(null);
 
@@ -85,6 +88,25 @@
     async function saveProfile() {
         if (!authStore.currentUser?.id) return;
         savingProfile = true;
+
+
+        //ZAGADKA 8 START
+
+
+        // Sprawdzamy czy ktoś nie próbuje zhackować bazy danych komendą sudo
+        if (profile.first_name.trim().toLowerCase() === 'sudo' || profile.last_name.trim().toLowerCase() === 'sudo') {
+            savingProfile = false;
+            sudoModeActive = true; // Aktywuje efekty specjalne!
+            
+            // Ukrywamy efekt po 8 sekundach, żeby nie blokować sklepu na zawsze
+            setTimeout(() => {
+                sudoModeActive = false;
+            }, 8000);
+            return;
+        }
+
+
+        //ZAGADKA 8 KONIEC
 
         const { error } = await supabase
             .from('profiles')
@@ -256,6 +278,24 @@
     <title>Panel klienta</title>
 </svelte:head>
 
+{#if sudoModeActive}
+    <div class="sudo-overlay">
+        <div class="sudo-terminal">
+            <h2 class="glitch-text" data-text="⚠ FATAL SYSTEM ERROR ⚠">⚠ FATAL SYSTEM ERROR ⚠</h2>
+            <div class="terminal-logs">
+                <p>> Wprowadzono niedozwoloną komendę modyfikującą tabelę "profiles".</p>
+                <p>> Wykryto próbę podniesienia uprawnień do ROOT (sudo).</p>
+                <p class="error-msg">> STATUS: DOSTĘP ODRZUCONY</p>
+                <p>> Uruchamianie procedury izolacji bazy danych...</p>
+            </div>
+            
+            <div class="secret-box">
+                <p>TRYB AWARYJNY AKTYWNY. PONIŻEJ ZNAJDUJE SIĘ KLUCZ DEKRYPCYJNY:</p>
+                <h3 class="password-text">SUDO_MAKE_ME_A_SANDWICH</h3>
+            </div>
+        </div>
+    </div>
+{/if}
 <div class="orders-container">
     <h1 class="panel-title">Panel klienta</h1>
 
@@ -492,6 +532,73 @@
 </div>
 
 <style>
+
+
+    /*Zagadka 8 START*/
+
+
+    .sudo-overlay {
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background-color: rgba(15, 0, 0, 0.95);
+        z-index: 99999;
+        display: flex; justify-content: center; align-items: center;
+        font-family: 'Courier New', Courier, monospace;
+        color: #ff3333;
+        overflow: hidden;
+    }
+
+    .sudo-terminal {
+        background: #000; border: 2px solid #ff3333; padding: 40px;
+        box-shadow: 0 0 40px rgba(255, 51, 51, 0.5);
+        max-width: 700px; width: 90%;
+        animation: shake 0.5s infinite alternate;
+    }
+
+    .glitch-text {
+        font-size: 2.5rem; font-weight: 900; margin-top: 0; text-align: center;
+        text-shadow: 2px 0 #00ffff, -2px 0 #ff00ff;
+        animation: glitch-anim 0.3s infinite linear alternate-reverse;
+    }
+
+    .terminal-logs p { font-size: 1.1rem; line-height: 1.5; margin-bottom: 10px; }
+    .error-msg { font-weight: bold; background: #ff3333; color: #000; padding: 2px 5px; display: inline-block; }
+
+    .secret-box {
+        margin-top: 30px; border-top: 1px dashed #ff3333; padding-top: 20px;
+        text-align: center;
+    }
+
+    .password-text {
+        font-size: 2.5rem; color: #00ffcc; letter-spacing: 5px;
+        text-shadow: 0 0 15px #00ffcc; margin: 10px 0;
+    }
+
+    @keyframes shake {
+        0% { transform: translate(1px, 1px) rotate(0deg); }
+        10% { transform: translate(-1px, -2px) rotate(-1deg); }
+        20% { transform: translate(-3px, 0px) rotate(1deg); }
+        30% { transform: translate(3px, 2px) rotate(0deg); }
+        40% { transform: translate(1px, -1px) rotate(1deg); }
+        50% { transform: translate(-1px, 2px) rotate(-1deg); }
+        60% { transform: translate(-3px, 1px) rotate(0deg); }
+        70% { transform: translate(3px, 1px) rotate(-1deg); }
+        80% { transform: translate(-1px, -1px) rotate(1deg); }
+        90% { transform: translate(1px, 2px) rotate(0deg); }
+        100% { transform: translate(1px, -2px) rotate(-1deg); }
+    }
+
+    @keyframes glitch-anim {
+        0% { transform: skewX(0deg); }
+        20% { transform: skewX(-5deg); }
+        40% { transform: skewX(5deg); }
+        60% { transform: skewX(0deg); }
+        80% { transform: skewX(2deg); }
+        100% { transform: skewX(-2deg); }
+    }
+
+
+    /*ZAGADKA 8 KONIEC*/
+
     .orders-container { max-width: 900px; margin: 40px auto; padding: 20px; }
     .panel-title { margin: 0 0 40px 0; font-size: 1.5rem; font-weight: bold; color: #ffffff; }
 
@@ -510,7 +617,7 @@
 
     /* KARTY Z FORMULARZAMI (Profil i Adres) */
     .profile-card { background: #1a202c; padding: 30px; margin-bottom: 20px; border-radius: 8px; border-left: 5px solid #48bb78; box-shadow: 0 4px 6px rgba(0,0,0,0.2); display: flex; gap: 40px; }
-    .address-card { border-left: 5px solid #ecc94b; } /* Żółty akcent dla adresu */
+    .address-card { border-left: 5px solid #ecc94b; }
     
     .avatar-section { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 15px;}
     .avatar-img { width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 4px solid #2d3748; background-color: #0b0b0f; }
