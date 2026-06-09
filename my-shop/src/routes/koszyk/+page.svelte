@@ -159,7 +159,7 @@ $effect(() => {
               );
 
           if (isAllThrees) {
-              alert('Płotka jest z ciebie zadowolona.\n\nRozwiązałeś zagadkę! Oto następna zagadka:\n👉 ');
+              alert('Płotka jest z ciebie zadowolona.\n\nRozwiązałeś zagadkę! Oto twoje hasło: NieznoszePortali\n👉 ');
 
               return; 
           }
