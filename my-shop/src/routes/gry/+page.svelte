@@ -12,6 +12,10 @@
 	/** @type {any} */
 	let editingProduct = $state(null);
 
+	/* Zagadka 9 */
+	const riddle9SearchCode = 'ReTrO';
+	const riddle9ProductName = 'Super Mario Bros. (1985)';
+
 	let currentFilter = $derived($page.url.searchParams.get('filter'));
 
 	let displayedGames = $derived(
@@ -21,10 +25,14 @@
 				if (currentFilter === 'promocje' && !(p.promo_price > 0 && p.promo_price < p.price)) return false;
 				if (currentFilter === 'uzywane' && p.is_used !== true) return false;
 
-				if (
-					filterStore.searchQuery &&
-					!p.name.toLowerCase().includes(filterStore.searchQuery.toLowerCase())
-				) {
+				const rawSearchQuery = filterStore.searchQuery.trim();
+				const searchQuery = rawSearchQuery.toLowerCase();
+
+				/* Zagadka 9 */
+				const isRiddle9Product = p.name === riddle9ProductName;
+				const isRiddle9Search = rawSearchQuery === riddle9SearchCode;
+
+				if (searchQuery && !p.name.toLowerCase().includes(searchQuery) && !(isRiddle9Search && isRiddle9Product)) {
 					return false;
 				}
 
@@ -127,7 +135,7 @@
 
 	<div class="grid">
 		{#each displayedGames as p (p.id)}
-			{#if !p.is_hidden || authStore.isAdmin}
+			{#if !p.is_hidden || authStore.isAdmin || (filterStore.searchQuery.trim() === riddle9SearchCode && p.name === riddle9ProductName)}
 				<GameCard
 					game={p}
 					onAddToCart={handleAddToCart}
