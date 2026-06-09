@@ -43,6 +43,23 @@
 		window.location.href = `${base}${authStore.isAdmin ? '/admin' : '/zamowienia'}`;
 	}
 
+	/*Zagadka 4*/
+	/** @param {MouseEvent} event */
+	function handleLogoClick(event) {
+		if ($page.url.pathname !== '/zagadki/4') return;
+
+		const clickedElement = event.target;
+
+		if (!(clickedElement instanceof Element)) return;
+
+		const clickedCoin = clickedElement.closest('.logo-img');
+
+		if (!clickedCoin) return;
+
+		event.preventDefault();
+		window.dispatchEvent(new CustomEvent('riddle4-logo-click'));
+	}
+
 	function resetFilters() {
 		filterStore.searchQuery = '';
 		filterStore.selectedPublisher = '';
@@ -93,7 +110,7 @@
 
 <nav class="navbar">
 	<div class="navbar-container">
-		<a href={resolve('/')} class="logo">
+		<a href={resolve('/')} class="logo" onclick={handleLogoClick}>
 			<img
 				src="/assets/logo-gaming.png"
 				alt="Logo Sklepu"
