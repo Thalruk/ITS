@@ -11,6 +11,41 @@
 	let isAdmin = $derived(data.user?.role?.toLowerCase() === 'admin');
     let quantity = $state(1);
 
+
+
+    /*Zagadka 3 - START*/
+
+
+
+
+    let typedCode = $state('');
+    let puzzleUnlocked = $state(false);
+
+    function handleKeydown(event) {
+        // Zabezpieczenie: Terminal działa tylko na grze, która ma ukryte hasło w bazie!
+        if (!product || !product.secret_riddle_code) return;
+
+        // Rejestrujemy wciskane klawisze
+        typedCode += event.key.toLowerCase();
+        
+        // Zatrzymujemy tylko 4 ostatnie znaki w pamięci
+        if (typedCode.length > 4) {
+            typedCode = typedCode.slice(-4);
+        }
+
+        // Jeśli ktoś wpisze słowo "hack", odpalamy terminal!
+        if (typedCode === 'hack') {
+            puzzleUnlocked = true;
+        }
+    }
+
+
+
+    /*Zagadka 3 - KONIEC*/
+
+
+
+
 	async function handleAddToCart() {
 		if (!product) return;
 
@@ -40,6 +75,8 @@
 		return `https://twojsklep.pl/assets/textures/games/${imageFileName}`;
 	}
 </script>
+
+<svelte:window onkeydown={handleKeydown} />
 
 <div class="page-wrapper">
     <main class="container main-content">
@@ -189,6 +226,19 @@
                 <a href={resolve('/')} class="cta-button primary">Wróć na stronę główną</a>
             </div>
         {/if}
+
+        {#if puzzleUnlocked}
+                <div class="hacker-terminal-overlay">
+                    <div class="terminal-content">
+                        <h2>> SYSTEM_BREACH_DETECTED</h2>
+                        <p>> Pobieranie zaszyfrowanych danych z głównego serwera bazy danych...</p>
+                        <p>> Odszyfrowano kolumnę: [secret_riddle_code]</p>
+                        <br>
+                        <h3 class="glitch-text">> HASŁO: {product.secret_riddle_code}</h3>
+                    </div>
+                </div>
+            {/if}
+
     </main>
 </div>
 
@@ -336,5 +386,50 @@
         padding: 10px;
         font-weight: 700;
     }
+
+
+
+    /*Zagadka 3 - START*/
+
+
+
+
+    .hacker-terminal-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        background-color: rgba(0, 0, 0, 0.95);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Courier New', monospace;
+        color: #00ff00;
+    }
+
+    .terminal-content {
+        background: #000;
+        border: 2px solid #00ff00;
+        padding: 40px;
+        box-shadow: 0 0 30px #00ff00;
+        max-width: 600px;
+        width: 100%;
+    }
+
+    .terminal-content h2 { color: #ff3366; margin-top: 0;}
+    .glitch-text { font-size: 2rem; text-shadow: 2px 0 #00ffff, -2px 0 #ff00ff; animation: glitch 1s infinite linear alternate-reverse;}
+
+    @keyframes glitch {
+        0% { transform: skewX(0deg); }
+        5% { transform: skewX(2deg); opacity: 0.8; }
+        10% { transform: skewX(-2deg); opacity: 1; }
+        15% { transform: skewX(0deg); }
+        100% { transform: skewX(0deg); }
+    }
+
+
+
+    /*Zagadka 3 - KONIEC*/
+
+
 
 </style>

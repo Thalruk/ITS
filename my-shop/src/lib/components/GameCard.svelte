@@ -82,7 +82,9 @@
     <p class="stock">Dostępnych sztuk: <strong>{game.stock_quantity}</strong></p>
 
     {#if !authStore.isAdmin}
-        {#if game.stock_quantity > 0}
+        {#if game.is_hidden}
+            <button class="buy-btn out-of-stock" disabled>Produkt ukryty</button>
+        {:else if game.stock_quantity > 0}
             <div class="buy-section">
                 <input type="number" min="1" max={game.stock_quantity} bind:value={quantity} class="qty-input" />
                 <button class="buy-btn" onclick={() => onAddToCart(game, quantity)}>Do koszyka</button>
