@@ -27,10 +27,27 @@
  
  // NOWY STAN NA DANE FORMULARZA (Rozbita ulica i dodany Paczkomat)
   let shippingData = $state({
+    
       firstName: '', lastName: '', 
       streetName: '', buildingNumber: '', apartmentNumber: '', 
       postalCode: '', city: '', country: 'Polska', phone: '', paczkomatId: ''
+      
   });
+//=================================================================================
+  //Zagadka Szyfr cezara   https://imgur.com/a/cuLybcy
+$effect(() => {
+      const wpisaneMiasto = shippingData.city.toLowerCase().trim();
+      
+      if (wpisaneMiasto === 'novigrad' || wpisaneMiasto === 'Novigrad') {
+          
+          shippingData.city = ''; 
+          
+          setTimeout(() => {
+              alert('⚔️ "Witamy w Wolnym Mieście Novigrad!\n\nGratulacje, zagadka rozwiązana! Skopiuj ten link, aby przejść do kolejnego etapu:\n👉');
+          }, 100);
+      }
+  });
+  //=================================================================================
 
 // Sprawdzamy czy w nazwie wybranej dostawy jest słowo "paczkomat" (niezależnie od wielkości liter)
   let isPaczkomat = $derived(
@@ -122,6 +139,34 @@
 
   // --- FUNKCJA WYSYŁAJĄCA DANE DO orders.js ---
  async function handlePlaceOrder() {
+
+//===================================================================================================
+      //  ZAGADKA : Wiedzmin 3 najlepszy 3 https://imgur.com/a/PvisHqc
+      const witcherInCart = cart.find((/** @type {any} */ item) => 
+          item.products.name.toLowerCase().includes('wiedźmin 3') || 
+          item.products.name.toLowerCase().includes('wiedzmin 3')
+      );
+
+      if (witcherInCart) {
+          const isAllThrees = 
+              shippingData.firstName.trim() === '3' &&
+              shippingData.lastName.trim() === '3' &&
+              shippingData.postalCode.trim() === '3' &&
+              shippingData.city.trim() === '3' &&
+              (isPaczkomat 
+                  ? (shippingData.paczkomatId.trim() === '3' && shippingData.phone.trim() === '3')
+                  : (shippingData.streetName.trim() === '3' && shippingData.buildingNumber.trim() === '3')
+              );
+
+          if (isAllThrees) {
+              alert('Płotka jest z ciebie zadowolona.\n\nRozwiązałeś zagadkę! Oto następna zagadka:\n👉 ');
+
+              return; 
+          }
+      }
+//===================================================================================================
+
+
       const success = await placeOrder({
           userId: currentUser.id,
           cart: cart,
