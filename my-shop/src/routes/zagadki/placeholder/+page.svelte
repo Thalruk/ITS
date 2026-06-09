@@ -1,6 +1,6 @@
 <section class="placeholder">
 	<h1>Gratulacje!</h1>
-	<p>To tymczasowa strona. Docelowo podłączone będzie przejście do kolejnej zagadki.</p>
+	<p>Rozwiązenie 0701</p>
 </section>
 
 <style>

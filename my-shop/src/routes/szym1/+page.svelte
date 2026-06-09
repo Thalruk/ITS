@@ -5,7 +5,7 @@
 
 <div class="puzzle-page">
     <div class="puzzle-wrapper">
-        <img src="https://i.imgur.com/MbGHsiA.png" alt="Zagadka 3" />
+        <img src="https://i.imgur.com/rZFRTon.png" alt="Zagadka 3" />
         
         <PuzzleSolver pageName="szym1" />
     </div>

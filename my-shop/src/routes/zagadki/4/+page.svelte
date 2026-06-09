@@ -216,9 +216,9 @@
                 <h2>Minigra ukończona</h2>
                 <p>Zebrano {coinsToCollect} monet. Droga dalej została odblokowana.</p>
 
-                <button class="start-btn" type="button" onclick={goNext}>
-                    Przejdź dalej
-                </button>
+                <div class="puzzle-text-block">
+        			Rozwiązanie: 6721
+   				</div>
             </div>
         {/if}
 
