@@ -13,14 +13,7 @@
      * @param {Function} resetForm
      */
     async function handleAddProduct(productData, resetForm) {
-        const success = await addProduct({
-            newName: productData.name,
-            newDesc: productData.description,
-            newPrice: productData.price,
-            newStock: productData.stock_quantity,
-            newImageFile: productData.image_file,
-            newCat: productData.category
-        });
+        const success = await addProduct(productData);
 
         if (success) {
             resetForm();
