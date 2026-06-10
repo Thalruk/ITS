@@ -62,10 +62,13 @@ export async function saveEdit(editingProduct) {
     }
 
     const parsedPrice = parseFloat(editingProduct.price);
+    const parsedPromoPrice = editingProduct.promo_price
+        ? parseFloat(editingProduct.promo_price)
+        : 0;
     const parsedStock = parseInt(editingProduct.stock_quantity) || 0;
 
-    if (parsedPrice < 0 || parsedStock < 0) {
-        alert('Błąd: Cena oraz ilość sztuk nie mogą być ujemne!');
+    if (parsedPrice < 0 || parsedPromoPrice < 0 || parsedStock < 0) {
+        alert('Błąd: Cena, cena promocyjna oraz ilość sztuk nie mogą być ujemne!');
         return false;
     }
 
@@ -87,9 +90,12 @@ export async function saveEdit(editingProduct) {
             name: editingProduct.name,
             description: editingProduct.description,
             price: parsedPrice,
+            promo_price: parsedPromoPrice,
             image_url: imageUrl,
             category: editingProduct.category ? Number(editingProduct.category) : null,
-            stock_quantity: parsedStock
+            stock_quantity: parsedStock,
+            is_new: editingProduct.is_new ?? false,
+            is_used: editingProduct.is_used ?? false
         })
         .eq('id', editingProduct.id);
 
@@ -180,28 +186,31 @@ export async function cloneProduct(product) {
  * @param {any} productData - Obiekt z danymi nowego produktu
  */
 export async function addProduct(productData) {
-    if (!productData.newName || !productData.newPrice) {
+    if (!productData.name || !productData.price) {
         alert('Podaj nazwę i cenę!');
         return false;
     }
 
-    if (!productData.newCat) {
+    if (!productData.category) {
         alert('Wybierz gatunek gry!');
         return false;
     }
 
-    const parsedPrice = parseFloat(productData.newPrice);
-    const parsedStock = parseInt(productData.newStock) || 0;
+    const parsedPrice = parseFloat(productData.price);
+    const parsedPromoPrice = productData.promo_price
+        ? parseFloat(productData.promo_price)
+        : 0;
+    const parsedStock = parseInt(productData.stock_quantity) || 0;
 
-    if (parsedPrice < 0 || parsedStock < 0) {
-        alert('Błąd: Cena oraz ilość sztuk nie mogą być ujemne!');
+    if (parsedPrice < 0 || parsedPromoPrice < 0 || parsedStock < 0) {
+        alert('Błąd: Cena, cena promocyjna oraz ilość sztuk nie mogą być ujemne!');
         return false;
     }
 
     let imageUrl;
 
     try {
-        imageUrl = await uploadProductImage(productData.newImageFile);
+        imageUrl = await uploadProductImage(productData.image_file);
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Nieznany błąd wysyłania obrazu';
         alert(message);
@@ -209,13 +218,16 @@ export async function addProduct(productData) {
     }
 
     const { error } = await supabase.from('products').insert([{
-        name: productData.newName,
-        description: productData.newDesc,
+        name: productData.name,
+        description: productData.description,
         price: parsedPrice,
+        promo_price: parsedPromoPrice,
         lowest_price_30d: parsedPrice,
         stock_quantity: parsedStock,
         image_url: imageUrl,
-        category: productData.newCat ? Number(productData.newCat) : null
+        category: productData.category ? Number(productData.category) : null,
+        is_new: productData.is_new ?? false,
+        is_used: productData.is_used ?? false
     }]);
 
     if (error) {
