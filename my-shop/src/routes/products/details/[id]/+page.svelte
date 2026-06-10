@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { loadCartGlobal } from '$lib/store.svelte.js';
 	import { addToCart } from '$lib/services/cart.js';
+    import { isPromoActive } from '$lib/riddlesConfig.js';
 
 	let { data } = $props();
 
@@ -11,16 +12,13 @@
 	let isAdmin = $derived(data.user?.role?.toLowerCase() === 'admin');
     let quantity = $state(1);
 
-
-
-    /*Zagadka 3 - START*/
-
-
-
-
     let typedCode = $state('');
     let puzzleUnlocked = $state(false);
 
+    /**
+     * Obsługuje rejestrowanie sekwencji klawiszy hakerskich
+     * @param {KeyboardEvent} event - Obiekt zdarzenia klawiatury
+     */
     function handleKeydown(event) {
         // Zabezpieczenie: Terminal działa tylko na grze, która ma ukryte hasło w bazie!
         if (!product || !product.secret_riddle_code) return;
@@ -38,13 +36,6 @@
             puzzleUnlocked = true;
         }
     }
-
-
-
-    /*Zagadka 3 - KONIEC*/
-
-
-
 
 	async function handleAddToCart() {
 		if (!product) return;

@@ -1,6 +1,7 @@
 <script>
     import { resolve } from '$app/paths';
     import { authStore } from '$lib/store.svelte.js';
+    import { isPromoActive } from '$lib/riddlesConfig.js';
 
     /**
      * @typedef {Object} GameCardProps
@@ -38,7 +39,8 @@
     
     <div class="image-container">
         <div class="badges">
-            {#if game.promo_price > 0 && game.promo_price < game.price}
+            <!-- {#if game.promo_price > 0 && game.promo_price < game.price} -->
+            {#if isPromoActive(game)}
                 <span class="badge sale">PROMO</span>
             {/if}
             
@@ -71,7 +73,8 @@
     <p class="desc">{game.description}</p>
     
     <div class="price-section">
-        {#if game.promo_price > 0 && game.promo_price < game.price}
+        <!-- {#if game.promo_price > 0 && game.promo_price < game.price} -->
+        {#if isPromoActive(game)}
             <p class="price old-price">{game.price} zł</p>
             <p class="price promo-price">{game.promo_price} zł</p>
         {:else}

@@ -1,14 +1,50 @@
 <script>
     import { resolve } from '$app/paths';
     import './page.css'; 
+    import { secretGameStore } from '$lib/secretStore.svelte.js';
+    import { riddlesConfig } from '$lib/riddlesConfig.js';
+
+    /** * Funkcja sprawdzająca, czy dla danej gry promocja powinna być widoczna na ekranie
+     * @param {any} game - Obiekt gry pobrany z bazy Supabase
+     * @returns {boolean}
+     */
+    function isPromoActive(game) {
+        const hasPromoPrice = game.promo_price > 0 && game.promo_price < game.price;
+        if (!hasPromoPrice) return false;
+
+        // Szukamy czy ta konkretna gra z Supabase jest przypisana do jakiejś zagadki
+        const riddle = riddlesConfig.find(r => r.targetProductId === game.id);
+        
+        // Jeśli gra NIE jest przypisana do żadnej zagadki, to jest to zwykła, 
+        // publiczna promocja sklepu – wyświetlamy ją zawsze!
+        if (!riddle) return true;
+
+        // Jeśli gra JEST przypisana do zagadki, promocja aktywuje się TYLKO po rozwiązaniu zadania
+        return secretGameStore.solvedPages.includes(riddle.pageName);
+    }
 
     /** @type {{ data: any }} */
     let { data } = $props();
 
     // FILTROWANIE SYSTEMOWE NA BAZIE DANYCH Z SUPABASE
     let newGames = $derived(data.products?.filter((/** @type {any} */ p) => p.is_new === true) || []);
-    let promoGames = $derived(data.products?.filter((/** @type {any} */ p) => p.promo_price > 0 && p.promo_price < p.price) || []);
+    // let promoGames = $derived(data.products?.filter((/** @type {any} */ p) => p.promo_price > 0 && p.promo_price < p.price) || []);
+    let promoGames = $derived(data.products?.filter((/** @type {any} */ p) => isPromoActive(p)) || []);
     let usedGames = $derived(data.products?.filter((/** @type {any} */ p) => p.is_used === true) || []);
+    
+    /** * Funkcja gwarantująca, że pasek zawsze będzie miał dokładnie 20 kafelków.
+     * Dzięki temu szerokość każdego paska jest identyczna, a prędkość stała!
+     * @param {any[]} gamesArray
+     */
+    function prepareMarqueeItems(gamesArray) {
+        if (!gamesArray || gamesArray.length === 0) return [];
+        
+        let result = [...gamesArray];
+        while (result.length < 20) {
+            result = [...result, ...gamesArray];
+        }
+        return result.slice(0, 20);
+    }
 
     /** @param {string} imageFileName */
     function getAbsoluteTexturePath(imageFileName) {
@@ -31,6 +67,19 @@
         </div>
     </section>
 
+    {#if !secretGameStore.konamiActivated}
+        <div class="secret-info-box">
+            <div class="secret-info-content">
+                <h3>🕵️‍♂️ WYKRYTO ANOMALIE PROMOCYJNE W SKLEPIE</h3>
+                <p>
+                    W systemie dystrybucji wykryto 12 zabezpieczonych sektorów promocyjnych. 
+                    Rozwiązanie ukrytych zagadek aktywuje permanentne zniżki na wybrane gry. 
+                    Aby załadować moduł deszyfrujący, wprowadź na klawiaturze tradycyjną kombinację klawiszy retro-gracza (10 kroków).
+                </p>
+            </div>
+        </div>
+    {/if}
+
     <div class="sliders-section">
         
         <section class="game-slider-row">
@@ -40,10 +89,10 @@
             {:else}
                 <div class="marquee-container">
                     <div class="marquee-track">
-                        {#each Array(10).fill(newGames).flat() as game, index (`new-${game.id}-${index}`)}
+                        {#each prepareMarqueeItems(newGames) as game}
                             <a href={resolve('/products/details/[id]', { id: String(game.id) })} class="slider-card">
                                 <div class="badges">
-                                    {#if game.promo_price > 0 && game.promo_price < game.price}
+                                    {#if isPromoActive(game)}
                                         <span class="badge sale">PROMO</span>
                                     {/if}
                                     {#if game.is_new}
@@ -56,7 +105,7 @@
                                 <img src={getAbsoluteTexturePath(game.image_url)} alt={game.name} />
                                 <h4>{game.name}</h4>
                                 <div class="price-section">
-                                    {#if game.promo_price > 0 && game.promo_price < game.price}
+                                    {#if isPromoActive(game)}
                                         <span class="price-tag old-price">{game.price} zł</span>
                                         <span class="price-tag new-price">{game.promo_price} zł</span>
                                     {:else}
@@ -77,10 +126,10 @@
             {:else}
                 <div class="marquee-container">
                     <div class="marquee-track reverse">
-                        {#each Array(10).fill(promoGames).flat() as game, index (`promo-${game.id}-${index}`)}
+                        {#each prepareMarqueeItems(promoGames) as game}
                             <a href={resolve('/products/details/[id]', { id: String(game.id) })} class="slider-card sale">
                                 <div class="badges">
-                                    {#if game.promo_price > 0 && game.promo_price < game.price}
+                                    {#if isPromoActive(game)}
                                         <span class="badge sale">PROMO</span>
                                     {/if}
                                     {#if game.is_new}
@@ -110,10 +159,10 @@
             {:else}
                 <div class="marquee-container">
                     <div class="marquee-track">
-                        {#each Array(10).fill(usedGames).flat() as game, index (`used-${game.id}-${index}`)}
+                        {#each prepareMarqueeItems(usedGames) as game}
                             <a href={resolve('/products/details/[id]', { id: String(game.id) })} class="slider-card used">
                                 <div class="badges">
-                                    {#if game.promo_price > 0 && game.promo_price < game.price}
+                                    {#if isPromoActive(game)}
                                         <span class="badge sale">PROMO</span>
                                     {/if}
                                     {#if game.is_new}
@@ -161,13 +210,18 @@
     .marquee-container::before { left: 0; background: linear-gradient(to right, #0f0f14, transparent); }
     .marquee-container::after { right: 0; background: linear-gradient(to left, #0f0f14, transparent); }
 
-    .marquee-track { display: flex; gap: 20px; width: max-content; animation: scroll 40s linear infinite; padding: 10px 0; }
-    .marquee-track.reverse { animation-direction: reverse; }
+    .marquee-track { 
+        display: flex; 
+        gap: 20px; 
+        width: max-content; 
+        animation: scroll 35s linear infinite; 
+        padding: 10px 0; 
+    }    
     .marquee-track:hover { animation-play-state: paused; }
 
     @keyframes scroll {
-        0% { transform: translateX(0); }
-        100% { transform: translateX(calc(-50% - 10px)); }
+        0% { transform: translateX(calc(-50% - 10px)); }
+        100% { transform: translateX(0); } 
     }
     
     .slider-card { 

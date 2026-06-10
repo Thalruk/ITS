@@ -2,6 +2,8 @@
 	import { base, resolve } from '$app/paths';
 	import { page } from '$app/stores';
 	import { authStore, filterStore } from '$lib/store.svelte.js';
+	import { secretGameStore } from '$lib/secretStore.svelte.js';
+	import { riddlesConfig } from '$lib/riddlesConfig.js';
 
 	/** @type {{ cartCount: number, categories?: any[] }} */
 	let { cartCount = 0, categories = [] } = $props();
@@ -65,12 +67,45 @@
 		filterStore.maxPrice = 500;
 		filterStore.sortBy = 'default';
 	}
+
+	const kSequence = [
+        'ArrowUp', 'ArrowUp', 
+        'ArrowDown', 'ArrowDown', 
+        'ArrowLeft', 'ArrowRight', 
+        'ArrowLeft', 'ArrowRight', 
+        'b', 'a'
+    ];
+    let sequenceIndex = 0;
+
+    /** @param {KeyboardEvent} event */
+    function handleKeyDown(event) {
+        const pressed = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+        const expected = kSequence[sequenceIndex].length === 1 
+            ? kSequence[sequenceIndex].toLowerCase() 
+            : kSequence[sequenceIndex];
+
+        if (pressed === expected) {
+            sequenceIndex++;
+            if (sequenceIndex === kSequence.length) {
+                secretGameStore.activateGame(); // Uruchamiamy tryb gry w store!
+                sequenceIndex = 0;
+            }
+        } else {
+            // Jeśli pomyłka, sprawdź czy gracz nie zaczął od nowa (czyli od Strzałki w Górę)
+            if (pressed === 'ArrowUp') {
+                sequenceIndex = 1;
+            } else {
+                sequenceIndex = 0;
+            }
+        }
+    }
 </script>
 
 <svelte:window
 	onclick={() => {
 		isCategoryMenuOpen = false;
 	}}
+	onkeydown={handleKeyDown}
 />
 
 <nav class="navbar">
@@ -203,6 +238,36 @@
 			</button>
 		</div>
 	</div>
+
+	{#if secretGameStore.konamiActivated}
+        <div class="hacker-matrix-bar">
+            <div class="matrix-container">
+                
+                <div class="matrix-info">
+                    <span class="matrix-title">🔓 MATRYCA PROMOCJI AKTYWNA</span>
+                    <span class="matrix-subtitle">Rozwiąż zagadkę aby zdeszyfrować promocje</span>
+                </div>
+
+                <div class="matrix-grid">
+                    {#each riddlesConfig as riddle (riddle.id)}
+                        {@const isSolved = secretGameStore.solvedPages.includes(riddle.pageName)}
+                        
+                        <a 
+                            href={resolve(/** @type {any} */ ('/' + riddle.pageName))} 
+                            class="matrix-cell {isSolved ? 'solved' : 'unsolved'}"
+                            onclick={closeMenus}
+                        >
+                            {String(riddle.id).padStart(2, '0')}
+                        </a>
+                    {/each}
+                </div>
+
+                <button class="matrix-exit-btn" onclick={() => secretGameStore.resetGame()}>
+                    Wyłącz
+                </button>
+            </div>
+        </div>
+    {/if}
 
 	{#if areFiltersVisible}
 		<div class="navbar-filters">
@@ -603,4 +668,131 @@
 			justify-content: center;
 		}
 	}
+
+	.hacker-matrix-bar {
+        background-color: #09090d;
+        border-top: 1px solid #1e1b4b;
+        border-bottom: 1px solid #1e1b4b;
+        padding: 0.75rem 2rem;
+        font-family: monospace;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .matrix-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 2rem;
+    }
+
+    .matrix-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        flex-shrink: 0;
+    }
+
+    .matrix-title {
+        color: #a78bfa;
+        font-weight: bold;
+        font-size: 0.85rem;
+        letter-spacing: 1px;
+    }
+
+    .matrix-subtitle {
+        color: #6366f1;
+        font-size: 0.7rem;
+    }
+
+    .matrix-grid {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr); 
+        gap: 10px;
+        flex-grow: 1;
+        max-width: 900px;
+    }
+
+    .matrix-cell {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 0.6rem 0;
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 900;
+        border-radius: 4px;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        box-sizing: border-box;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    }
+
+    .matrix-cell.unsolved {
+        background-color: #dc2626;
+        color: #ffffff;
+        border: 1px solid #f87171;
+        box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .matrix-cell.unsolved:hover {
+        background-color: #ef4444;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+        border-color: #ffffff;
+    }
+
+    .matrix-cell.solved {
+        background-color: #059669;
+        color: #ffffff;
+        border: 1px solid #34d399;
+        box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .matrix-cell.solved:hover {
+        background-color: #10b981;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(5, 150, 105, 0.4);
+        border-color: #ffffff;
+    }
+
+    .matrix-exit-btn {
+        background: transparent;
+        border: 1px solid #3f3f46;
+        color: #71717a;
+        padding: 0.4rem 0.8rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        font-family: inherit;
+        font-weight: bold;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+
+    .matrix-exit-btn:hover {
+        color: #ef4444;
+        border-color: #ef4444;
+        background: rgba(239, 68, 68, 0.05);
+    }
+
+    @media (max-width: 1100px) {
+        .matrix-container {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 1.2rem;
+        }
+        .matrix-grid {
+            grid-template-columns: repeat(6, 1fr); 
+            max-width: 100%;
+        }
+        .matrix-cell {
+            padding: 0.8rem 0;
+        }
+        .matrix-exit-btn {
+            align-self: flex-end;
+        }
+    }
 </style>

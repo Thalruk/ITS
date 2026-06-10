@@ -1,20 +1,18 @@
 <script>
-	import puzzleImage from '../../assets/Zagadka 1.png';
+    import puzzleImage from '../../assets/Zagadka 1.png';
+    import PuzzleSolver from '$lib/components/PuzzleSolver.svelte';
 </script>
 
 <div class="puzzle-page">
-	<img src={puzzleImage} alt="Zagadka 1" />
+    <div class="puzzle-wrapper">
+        <img src={puzzleImage} alt="Zagadka 1" />
+        
+        <PuzzleSolver pageName="MessiOrRonaldo" />
+    </div>
 </div>
 
 <style>
-	.puzzle-page {
-		min-height: 100vh;
-		display: grid;
-		place-items: center;
-	}
-
-	img {
-		max-width: 100%;
-		height: auto;
-	}
+    .puzzle-page { min-height: 100vh; display: grid; place-items: center; background-color: #0f0f14; padding: 2rem; box-sizing: border-box; }
+    .puzzle-wrapper { display: flex; flex-direction: column; align-items: center; gap: 2rem; max-width: 100%; }
+    img { max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5); }
 </style>
