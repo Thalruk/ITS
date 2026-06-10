@@ -1,3 +1,6 @@
+<script>
+	import PuzzleSolver from '$lib/components/PuzzleSolver.svelte';
+</script>
 <div class="puzzle-page">
 	<div class="hint-card">
 		<h2>Rezerwacja w Vice City 🌴</h2>
@@ -10,9 +13,19 @@
 			Gdy trafisz w odpowiednią liczbę, pojawi się kod promocyjny!
 		</p>
 	</div>
+	<div class="puzzle-wrapper">
+		<PuzzleSolver pageName="LoginMystery1" />
+	</div>
 </div>
 
 <style>
+	.puzzle-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2rem;
+        max-width: 100%;
+    }
 	.puzzle-page {
 		min-height: 100vh;
 		display: grid;

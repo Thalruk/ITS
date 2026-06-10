@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { loadCartGlobal } from '$lib/store.svelte.js';
 	import { addToCart } from '$lib/services/cart.js';
+    import { isPromoActive } from '$lib/riddlesConfig.js';
 
 	let { data } = $props();
 

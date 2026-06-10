@@ -1,6 +1,8 @@
 <script>
 	import { goto } from '$app/navigation';
     import { resolve } from '$app/paths';
+	import PuzzleSolver from '$lib/components/PuzzleSolver.svelte';
+
 
 	let answer = $state('');
 	let error = $state('');
@@ -100,10 +102,22 @@
 		{#if solved}
 			<p class="success">Poprawna odpowiedź. Przejście dalej...</p>
 		{/if}
+
+		<div class="puzzle-wrapper">
+			<PuzzleSolver pageName="LoginMystery1" />
+		</div>
 	</div>
 </section>
 
 <style>
+    .puzzle-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2rem;
+        max-width: 100%;
+    }
+
 	.riddle-page {
 		min-height: 70vh;
 		display: flex;

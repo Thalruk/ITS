@@ -2,6 +2,8 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import PuzzleSolver from '$lib/components/PuzzleSolver.svelte';
+
 
 	/** @typedef {{ id: number, x: number, size: number, duration: number }} Coin */
 
@@ -232,10 +234,21 @@
                 </button>
             </div>
         {/if}
+		<div class="puzzle-wrapper">
+			<PuzzleSolver pageName="LoginMystery1" />
+		</div>
 	</div>
+
 </section>
 
 <style>
+    .puzzle-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2rem;
+        max-width: 100%;
+    }
 	.riddle-page {
 		min-height: 70vh;
 		display: flex;
