@@ -31,7 +31,7 @@ export const riddlesConfig = [
     {
         id: 3,
         pageName: 'szym1',
-        correctPassword: 'Novigrad', 
+        correctPassword: 'WolneMiasto', 
         targetProductId: 32,              
         rewardName: 'Wiedźmin 3 z 99.99 zł na 50 zł!'
     },

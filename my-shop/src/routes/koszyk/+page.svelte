@@ -43,7 +43,7 @@ $effect(() => {
           shippingData.city = ''; 
           
           setTimeout(() => {
-              alert('⚔️ "Witamy w Wolnym Mieście Novigrad!\n\nGratulacje, zagadka rozwiązana! Skopiuj ten link, aby przejść do kolejnego etapu:\n👉');
+              alert('⚔️ "Witamy w Wolnym Mieście Novigrad!\n\nGratulacje, zagadka rozwiązana! Hasło to: WolneMiasto');
           }, 100);
       }
   });
